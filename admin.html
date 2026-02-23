@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Panel - MBG</title>
+    <title>Admin Panel - MBG System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
@@ -12,6 +12,12 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap");
@@ -23,6 +29,54 @@
         border-right: 4px solid #2563eb;
         background: #eff6ff;
         color: #2563eb;
+      }
+      #map {
+        height: 450px;
+        width: 100%;
+        border-radius: 1.5rem;
+        z-index: 10;
+        border: 4px solid white;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+
+      /* Animasi Loading Spinner */
+      .spinner {
+        animation: rotate 2s linear infinite;
+        width: 20px;
+        height: 20px;
+      }
+      .spinner .path {
+        stroke: currentColor;
+        stroke-linecap: round;
+        animation: dash 1.5s ease-in-out infinite;
+      }
+      @keyframes rotate {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes dash {
+        0% {
+          stroke-dasharray: 1, 150;
+          stroke-dashoffset: 0;
+        }
+        50% {
+          stroke-dasharray: 90, 150;
+          stroke-dashoffset: -35;
+        }
+        100% {
+          stroke-dasharray: 90, 150;
+          stroke-dashoffset: -124;
+        }
       }
     </style>
   </head>
@@ -50,18 +104,18 @@
           <i class="fas fa-users mr-3"></i> Karyawan
         </button>
         <button
-          onclick="showSection('attendance')"
-          class="nav-item w-full flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
-          id="btn-attendance"
-        >
-          <i class="fas fa-clipboard-check mr-3"></i> Log Absensi
-        </button>
-        <button
           onclick="showSection('settings')"
           class="nav-item w-full flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
           id="btn-settings"
         >
           <i class="fas fa-building mr-3"></i> Pengaturan Divisi
+        </button>
+        <button
+          onclick="showSection('koordinat')"
+          class="nav-item w-full flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+          id="btn-koordinat"
+        >
+          <i class="fas fa-map-marker-alt mr-3"></i> Koordinat Lokasi
         </button>
       </nav>
       <div class="p-4 border-t">
@@ -122,14 +176,9 @@
               class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"
             >
               <p class="text-sm text-gray-400 font-bold uppercase">
-                Belum Absen
+                Status Sistem
               </p>
-              <h3
-                id="stat-absent-today"
-                class="text-3xl font-black text-red-600"
-              >
-                0
-              </h3>
+              <h3 class="text-3xl font-black text-blue-600">AKTIF</h3>
             </div>
           </div>
         </div>
@@ -138,7 +187,7 @@
           <div class="flex justify-between items-center">
             <h3 class="text-xl font-bold">Daftar Karyawan</h3>
             <button
-              onclick="openModal('userModal')"
+              onclick="openUserModal()"
               class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700"
             >
               + Tambah Karyawan
@@ -159,7 +208,9 @@
                   <th class="p-4 text-xs font-bold text-gray-400 uppercase">
                     Jabatan
                   </th>
-                  <th class="p-4 text-xs font-bold text-gray-400 uppercase">
+                  <th
+                    class="p-4 text-xs font-bold text-gray-400 uppercase text-center"
+                  >
                     Aksi
                   </th>
                 </tr>
@@ -169,72 +220,184 @@
           </div>
         </div>
 
-        <div id="section-attendance" class="hidden space-y-4">
-          <h3 class="text-xl font-bold">Log Absensi Hari Ini</h3>
-          <div
-            id="attendanceGrid"
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-          ></div>
+        <div id="section-koordinat" class="hidden space-y-4">
+          <h3 class="text-xl font-bold">Titik Koordinat Kantor</h3>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div
+              class="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4"
+            >
+              <div>
+                <label class="text-[10px] font-bold text-gray-400 ml-2"
+                  >LATITUDE</label
+                >
+                <input
+                  type="text"
+                  id="input-lat"
+                  class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+                  placeholder="-6.xxx"
+                />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-gray-400 ml-2"
+                  >LONGITUDE</label
+                >
+                <input
+                  type="text"
+                  id="input-lon"
+                  class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+                  placeholder="106.xxx"
+                />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-gray-400 ml-2"
+                  >RADIUS ABSENSI (KM)</label
+                >
+                <input
+                  type="number"
+                  id="input-radius"
+                  step="0.01"
+                  class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+                  placeholder="0.1"
+                />
+              </div>
+              <button
+                id="btn-save-coord"
+                onclick="saveGlobalCoords()"
+                class="w-full p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+              >
+                <i class="fas fa-save"></i> <span>Simpan Lokasi Pusat</span>
+              </button>
+              <p class="text-[10px] text-gray-400 leading-relaxed p-2 italic">
+                * Karyawan hanya bisa absen jika berada di dalam radius
+                lingkaran biru.
+              </p>
+            </div>
+            <div
+              class="lg:col-span-2 bg-white p-4 rounded-3xl shadow-sm border border-gray-100"
+            >
+              <div id="map"></div>
+            </div>
+          </div>
         </div>
 
         <div id="section-settings" class="hidden space-y-4">
-          <h3 class="text-xl font-bold">Pengaturan Lokasi Divisi</h3>
-          <div id="divisionGrid" class="grid grid-cols-1 gap-4"></div>
+          <div class="flex justify-between items-center">
+            <h3 class="text-xl font-bold">Pengaturan Divisi</h3>
+            <button
+              onclick="openModal('addDivModal')"
+              class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg"
+            >
+              + Tambah Divisi
+            </button>
+          </div>
+          <div
+            id="divisionGrid"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+          ></div>
         </div>
       </section>
     </main>
 
     <div
+      id="detailModal"
+      class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[110] p-4"
+    >
+      <div class="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl">
+        <div class="flex justify-between items-start mb-6">
+          <div>
+            <h3 id="detailName" class="text-xl font-black">Riwayat Absensi</h3>
+            <p
+              class="text-xs text-gray-400 font-bold uppercase tracking-widest"
+            >
+              Database: daily_subcollection
+            </p>
+          </div>
+          <button
+            onclick="closeModal('detailModal')"
+            class="text-gray-400 hover:text-red-500"
+          >
+            <i class="fas fa-times-circle text-2xl"></i>
+          </button>
+        </div>
+        <div
+          id="attendanceList"
+          class="space-y-2 max-h-[50vh] overflow-y-auto pr-2"
+        ></div>
+        <button
+          onclick="closeModal('detailModal')"
+          class="w-full mt-6 p-4 bg-gray-100 rounded-2xl font-bold"
+        >
+          Tutup
+        </button>
+      </div>
+    </div>
+
+    <div
       id="userModal"
       class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] p-4"
     >
-      <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8">
-        <h3 class="text-xl font-black mb-6">Tambah Karyawan Baru</h3>
-        <div class="space-y-4">
+      <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl">
+        <h3 id="userModalTitle" class="text-xl font-black mb-6">
+          Data Karyawan
+        </h3>
+        <input type="hidden" id="editDocId" />
+        <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
           <input
             type="text"
-            id="newUserId"
-            placeholder="ID Karyawan (untuk login)"
-            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+            id="userName"
+            placeholder="Nama Lengkap"
+            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
           />
           <input
             type="text"
-            id="newUserName"
-            placeholder="Nama Lengkap"
-            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+            id="userIdField"
+            placeholder="Username/ID"
+            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+          />
+          <input
+            type="text"
+            id="userPhone"
+            placeholder="Nomor HP"
+            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
           />
           <input
             type="password"
-            id="newUserPass"
-            placeholder="Kata Sandi"
-            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+            id="userPass"
+            placeholder="Password"
+            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
           />
-          <div class="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              id="newUserDivisi"
-              placeholder="Divisi (GIZI/DRIVER)"
-              class="p-3 bg-gray-50 border rounded-2xl outline-none"
-            />
-            <input
-              type="text"
-              id="newUserJabatan"
-              placeholder="Jabatan"
-              class="p-3 bg-gray-50 border rounded-2xl outline-none"
-            />
-          </div>
+          <select
+            id="userDivisi"
+            onchange="syncGaji()"
+            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+          ></select>
+          <select
+            id="userJabatan"
+            onchange="syncGaji()"
+            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+          >
+            <option value="ANGGOTA">ANGGOTA</option>
+            <option value="KOORDINATOR">KOORDINATOR</option>
+          </select>
+          <input
+            type="text"
+            id="userGaji"
+            readonly
+            class="w-full p-3 bg-blue-50 border-blue-100 border rounded-2xl outline-none font-bold text-blue-600"
+          />
           <div class="flex gap-2 pt-4">
             <button
               onclick="closeModal('userModal')"
-              class="flex-1 p-4 bg-gray-100 rounded-2xl font-bold text-gray-500"
+              class="flex-1 p-4 bg-gray-100 rounded-2xl font-bold"
             >
               Batal
             </button>
             <button
+              id="btn-save-user"
               onclick="saveUser()"
-              class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg"
+              class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2"
             >
-              Simpan
+              <span>Simpan</span>
             </button>
           </div>
         </div>
@@ -242,93 +405,91 @@
     </div>
 
     <div
-      id="editDivModal"
+      id="addDivModal"
       class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] p-4"
     >
-      <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8">
-        <h3 class="text-xl font-black mb-2">
-          Edit Divisi: <span id="editDivLabel" class="text-blue-600"></span>
-        </h3>
-        <p class="text-xs text-gray-400 mb-6 font-bold">
-          PENGATURAN LOKASI & WAKTU
-        </p>
-        <input type="hidden" id="editDivId" />
+      <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl">
+        <h3 class="text-xl font-black mb-6">Kelola Divisi</h3>
         <div class="space-y-4">
+          <input
+            type="text"
+            id="addDivName"
+            placeholder="Nama Divisi"
+            class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+          />
           <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[10px] font-bold text-gray-400 ml-2 uppercase"
-                >Latitude</label
-              >
-              <input
-                type="text"
-                id="editDivLat"
-                class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
-              />
-            </div>
-            <div>
-              <label class="text-[10px] font-bold text-gray-400 ml-2 uppercase"
-                >Longitude</label
-              >
-              <input
-                type="text"
-                id="editDivLon"
-                class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
-              />
-            </div>
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-gray-400 ml-2 uppercase"
-              >Radius (KM)</label
-            >
             <input
               type="number"
-              id="editDivRadius"
-              step="0.01"
-              class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
+              id="addDivGajiAnggota"
+              placeholder="Gaji Anggota"
+              class="p-3 bg-gray-50 border rounded-2xl outline-none"
+            />
+            <input
+              type="number"
+              id="addDivGajiKoor"
+              placeholder="Gaji Koordinator"
+              class="p-3 bg-gray-50 border rounded-2xl outline-none"
             />
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[10px] font-bold text-gray-400 ml-2 uppercase"
-                >Jam Masuk</label
+              <label class="text-[10px] font-bold text-gray-400 ml-2"
+                >JAM MASUK</label
               >
               <input
                 type="time"
-                id="editDivIn"
+                id="addDivJamMasuk"
                 class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
               />
             </div>
             <div>
-              <label class="text-[10px] font-bold text-gray-400 ml-2 uppercase"
-                >Jam Pulang</label
+              <label class="text-[10px] font-bold text-gray-400 ml-2"
+                >JAM KELUAR</label
               >
               <input
                 type="time"
-                id="editDivOut"
+                id="addDivJamKeluar"
                 class="w-full p-3 bg-gray-50 border rounded-2xl outline-none"
               />
             </div>
           </div>
           <div class="flex gap-2 pt-4">
             <button
-              onclick="closeModal('editDivModal')"
-              class="flex-1 p-4 bg-gray-100 rounded-2xl font-bold text-gray-500"
+              onclick="closeModal('addDivModal')"
+              class="flex-1 p-4 bg-gray-100 rounded-2xl font-bold"
             >
               Batal
             </button>
             <button
-              onclick="updateDivision()"
-              class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg"
+              id="btn-save-div"
+              onclick="saveDivision()"
+              class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2"
             >
-              Update
+              <span>Simpan</span>
             </button>
           </div>
         </div>
       </div>
     </div>
 
+    <div
+      id="successModal"
+      class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[200] p-4"
+    >
+      <div
+        class="bg-white w-full max-w-xs rounded-[2rem] p-6 shadow-2xl text-center animate-bounce-short"
+      >
+        <div
+          class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4"
+        >
+          <i class="fas fa-check text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-black text-gray-800">Berhasil!</h3>
+        <p class="text-sm text-gray-500 mt-1">Data telah diperbarui.</p>
+      </div>
+    </div>
+
     <script>
-      // --- FIREBASE CONFIG ---
       const firebaseConfig = {
         apiKey: "AIzaSyAYIlOOvpsZEAmx8pNt08YhLjisyCAxHhY",
         authDomain: "puskesmas-keman-d25a6.firebaseapp.com",
@@ -339,8 +500,145 @@
       };
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
+      let map, marker, circle;
 
-      // --- NAVIGATION LOGIC ---
+      // --- UTILS ---
+      function setBtnLoading(btnId, isLoading, originalText) {
+        const btn = document.getElementById(btnId);
+        if (isLoading) {
+          btn.disabled = true;
+          btn.innerHTML = `<svg class="spinner" viewBox="0 0 50 50"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle></svg> Memproses...`;
+        } else {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      }
+
+      function triggerSuccess() {
+        const modal = document.getElementById("successModal");
+        modal.classList.replace("hidden", "flex");
+        setTimeout(() => {
+          modal.classList.replace("flex", "hidden");
+        }, 1500);
+      }
+
+      // --- MAPS LOGIC ---
+      function initMap(lat = -6.2, lon = 106.81, radius = 0.1) {
+        if (!map) {
+          map = L.map("map").setView([lat, lon], 17);
+          L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          ).addTo(map);
+        } else {
+          map.setView([lat, lon], 17);
+        }
+        if (marker) map.removeLayer(marker);
+        if (circle) map.removeLayer(circle);
+
+        marker = L.marker([lat, lon]).addTo(map);
+        circle = L.circle([lat, lon], {
+          color: "#2563eb",
+          fillColor: "#3b82f6",
+          fillOpacity: 0.2,
+          radius: radius * 1000,
+        }).addTo(map);
+      }
+
+      async function loadGlobalCoordData() {
+        const doc = await db.collection("settings").doc("lokasi_pusat").get();
+        if (doc.exists) {
+          const d = doc.data();
+          document.getElementById("input-lat").value = d.lat;
+          document.getElementById("input-lon").value = d.lon;
+          document.getElementById("input-radius").value = d.radius_km;
+          initMap(d.lat, d.lon, d.radius_km);
+        } else {
+          initMap();
+        }
+      }
+
+      async function saveGlobalCoords() {
+        const lat = parseFloat(document.getElementById("input-lat").value);
+        const lon = parseFloat(document.getElementById("input-lon").value);
+        const rad = parseFloat(document.getElementById("input-radius").value);
+
+        if (isNaN(lat) || isNaN(lon))
+          return alert("Masukkan koordinat yang valid!");
+
+        setBtnLoading(
+          "btn-save-coord",
+          true,
+          '<i class="fas fa-save"></i> Simpan Lokasi Pusat',
+        );
+
+        try {
+          await db
+            .collection("settings")
+            .doc("lokasi_pusat")
+            .set({
+              lat,
+              lon,
+              radius_km: rad || 0.1,
+            });
+          triggerSuccess();
+          initMap(lat, lon, rad);
+        } catch (e) {
+          alert("Gagal simpan");
+        }
+
+        setBtnLoading(
+          "btn-save-coord",
+          false,
+          '<i class="fas fa-save"></i> Simpan Lokasi Pusat',
+        );
+      }
+
+      // --- ATTENDANCE DETAIL ---
+      async function showUserDetail(userDocId, name) {
+        document.getElementById("detailName").innerText = name;
+        const list = document.getElementById("attendanceList");
+        list.innerHTML = `<p class="text-center py-4">Memuat data...</p>`;
+        openModal("detailModal");
+
+        try {
+          const snapshot = await db
+            .collection("attendance")
+            .doc(userDocId)
+            .collection("daily")
+            .orderBy("date", "desc")
+            .get();
+
+          list.innerHTML = "";
+          if (snapshot.empty) {
+            list.innerHTML = `<p class="text-center py-10 text-gray-400">Tidak ada riwayat absensi.</p>`;
+            return;
+          }
+
+          snapshot.forEach((doc) => {
+            const d = doc.data();
+            const dateFmt = new Date(d.date).toLocaleDateString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "short",
+            });
+            list.innerHTML += `
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div>
+                                <p class="text-[10px] font-black text-gray-400 uppercase">${dateFmt}</p>
+                                <p class="text-xs font-bold text-green-600">HADIR</p>
+                            </div>
+                            <div class="flex gap-4 text-right">
+                                <div><p class="text-[8px] text-gray-400 font-bold uppercase">IN</p><p class="text-xs font-bold text-gray-800">${d.clockIn || "--:--"}</p></div>
+                                <div><p class="text-[8px] text-gray-400 font-bold uppercase">OUT</p><p class="text-xs font-bold text-gray-800">${d.clockOut || "--:--"}</p></div>
+                            </div>
+                        </div>`;
+          });
+        } catch (e) {
+          list.innerHTML = `<p class="text-center text-red-500">Error: Gagal memuat data</p>`;
+        }
+      }
+
+      // --- CORE UI FUNCTIONS ---
       function showSection(section) {
         document
           .querySelectorAll("#content-area > div")
@@ -349,8 +647,9 @@
           .getElementById(`section-${section}`)
           .classList.remove("hidden");
         document.getElementById("section-title").innerText =
-          section.charAt(0).toUpperCase() + section.slice(1);
-
+          section === "koordinat"
+            ? "Lokasi Kantor"
+            : section.charAt(0).toUpperCase() + section.slice(1);
         document
           .querySelectorAll(".nav-item")
           .forEach((el) => el.classList.remove("sidebar-active"));
@@ -359,26 +658,14 @@
           .classList.add("sidebar-active");
 
         if (section === "users") loadUsers();
-        if (section === "attendance") loadAttendance();
         if (section === "settings") loadDivisions();
+        if (section === "koordinat") {
+          loadGlobalCoordData();
+          setTimeout(() => {
+            if (map) map.invalidateSize();
+          }, 300);
+        }
         if (section === "dashboard") loadStats();
-      }
-
-      // --- DATA LOADERS ---
-      async function loadStats() {
-        const users = await db.collection("users").get();
-        document.getElementById("stat-total-users").innerText = users.size;
-
-        const today = new Date().toISOString().split("T")[0];
-        const attend = await db
-          .collectionGroup("daily")
-          .where("date", "==", today)
-          .get();
-        document.getElementById("stat-present-today").innerText = attend.size;
-        document.getElementById("stat-absent-today").innerText = Math.max(
-          0,
-          users.size - attend.size,
-        );
       }
 
       function loadUsers() {
@@ -388,199 +675,178 @@
           snap.forEach((doc) => {
             const u = doc.data();
             tbody.innerHTML += `
-                        <tr class="border-b border-gray-50 hover:bg-gray-50/50">
-                            <td class="p-4">
-                                <p class="font-bold text-gray-800">${u.name}</p>
-                                <p class="text-[10px] text-gray-400 font-mono">${u.id}</p>
+                        <tr class="border-b border-gray-50">
+                            <td class="p-4 cursor-pointer" onclick="showUserDetail('${doc.id}', '${u.name}')">
+                                <p class="font-bold text-gray-800 underline decoration-gray-200">${u.name || "N/A"}</p>
+                                <p class="text-xs text-gray-400">ID: ${u.id || "-"}</p>
                             </td>
-                            <td class="p-4 text-sm">${u.divisi || "-"}</td>
-                            <td class="p-4 text-sm">${u.jabatan || "-"}</td>
-                            <td class="p-4">
-                                <button onclick="deleteUser('${doc.id}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                            <td class="p-4 text-sm font-semibold text-blue-600">${u.divisi || "-"}</td>
+                            <td class="p-4 text-sm text-gray-500">${u.jabatan || "-"}</td>
+                            <td class="p-4 text-center">
+                                <button onclick="openUserModal('${doc.id}')" class="text-blue-400 mx-2"><i class="fas fa-edit"></i></button>
+                                <button onclick="deleteUser('${doc.id}')" class="text-red-400"><i class="fas fa-trash"></i></button>
                             </td>
-                        </tr>
-                    `;
+                        </tr>`;
           });
         });
       }
 
-      function loadAttendance() {
-        const today = new Date().toISOString().split("T")[0];
-        const grid = document.getElementById("attendanceGrid");
-        grid.innerHTML =
-          '<p class="text-gray-400 text-sm p-4 text-center col-span-full font-bold">Memuat data absensi real-time...</p>';
-
-        db.collection("users")
-          .get()
-          .then((users) => {
-            grid.innerHTML = "";
-            users.forEach(async (userDoc) => {
-              const attDoc = await db
-                .collection("attendance")
-                .doc(userDoc.id)
-                .collection("daily")
-                .doc(today)
-                .get();
-              if (attDoc.exists) {
-                const d = attDoc.data();
-                const userData = userDoc.data();
-                grid.innerHTML += `
-                            <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                                <div class="flex items-center gap-3 mb-3">
-                                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xs">
-                                        ${userData.name.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p class="font-bold text-sm leading-none">${userData.name}</p>
-                                        <p class="text-[10px] text-gray-400">${userData.divisi}</p>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2 mb-3">
-                                    <div class="bg-blue-50 p-2 rounded-xl text-center">
-                                        <p class="text-[8px] font-bold text-blue-400 uppercase">Masuk</p>
-                                        <p class="text-sm font-black text-blue-700">${d.clockIn || "--:--"}</p>
-                                    </div>
-                                    <div class="bg-orange-50 p-2 rounded-xl text-center">
-                                        <p class="text-[8px] font-bold text-orange-400 uppercase">Pulang</p>
-                                        <p class="text-sm font-black text-orange-700">${d.clockOut || "--:--"}</p>
-                                    </div>
-                                </div>
-                                ${d.photoIn ? `<img src="${d.photoIn}" class="w-full h-32 object-cover rounded-2xl border">` : ""}
-                            </div>
-                        `;
-              }
-            });
-          });
+      async function loadStats() {
+        const users = await db.collection("users").get();
+        document.getElementById("stat-total-users").innerText = users.size;
+        document.getElementById("stat-present-today").innerText = "Online";
       }
 
-      function loadDivisions() {
-        db.collection("divisi").onSnapshot((snap) => {
-          const grid = document.getElementById("divisionGrid");
-          grid.innerHTML = "";
-          snap.forEach((doc) => {
-            const d = doc.data();
-            grid.innerHTML += `
-                        <div class="bg-white p-6 rounded-3xl border border-gray-100 flex flex-col md:flex-row justify-between gap-4">
-                            <div>
-                                <h4 class="font-black text-blue-600 mb-1">${doc.id}</h4>
-                                <p class="text-xs text-gray-400 font-bold uppercase tracking-tighter">Lokasi Koordinat:</p>
-                                <p class="text-xs text-gray-600 mb-2">Lat: ${d.lat} | Lon: ${d.lon}</p>
-                                <div class="flex gap-4">
-                                    <div>
-                                        <p class="text-[8px] font-bold text-gray-400 uppercase">Radius</p>
-                                        <p class="text-xs font-bold">${d.radius_km} KM</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-[8px] font-bold text-gray-400 uppercase">Jam Kerja</p>
-                                        <p class="text-xs font-bold">${d.jam_masuk} - ${d.jam_pulang}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button onclick="editDivision('${doc.id}')" class="bg-blue-50 text-blue-600 p-3 px-6 rounded-2xl text-xs font-black hover:bg-blue-100 transition-colors">
-                                    <i class="fas fa-edit mr-2"></i>Edit Pengaturan
-                                </button>
-                            </div>
-                        </div>
-                    `;
-          });
-        });
-      }
-
-      // --- ACTIONS ---
-      async function saveUser() {
-        const id = document.getElementById("newUserId").value;
-        const name = document.getElementById("newUserName").value;
-        const pass = document.getElementById("newUserPass").value;
-        const div = document.getElementById("newUserDivisi").value;
-        const jab = document.getElementById("newUserJabatan").value;
-
-        if (!id || !name || !pass) return alert("Lengkapi data!");
-
-        try {
-          await db.collection("users").add({
-            id,
-            name,
-            password: pass,
-            divisi: div,
-            jabatan: jab,
-            presence_count: 0,
-            nik: "NIK-" + Math.floor(Math.random() * 1000),
-          });
-          closeModal("userModal");
-          alert("Karyawan ditambahkan!");
-        } catch (e) {
-          alert(e.message);
-        }
-      }
-
-      async function deleteUser(docId) {
-        if (confirm("Hapus karyawan ini?")) {
-          await db.collection("users").doc(docId).delete();
-        }
-      }
-
-      // --- EDIT DIVISION LOGIC ---
-      async function editDivision(divId) {
+      async function syncGaji() {
+        const divId = document.getElementById("userDivisi").value;
+        const jab = document.getElementById("userJabatan").value;
+        if (!divId) return;
         const doc = await db.collection("divisi").doc(divId).get();
         if (doc.exists) {
-          const data = doc.data();
-          document.getElementById("editDivId").value = divId;
-          document.getElementById("editDivLabel").innerText = divId;
-          document.getElementById("editDivLat").value = data.lat || 0;
-          document.getElementById("editDivLon").value = data.lon || 0;
-          document.getElementById("editDivRadius").value =
-            data.radius_km || 0.1;
-          document.getElementById("editDivIn").value =
-            data.jam_masuk || "08:00";
-          document.getElementById("editDivOut").value =
-            data.jam_pulang || "16:00";
-          openModal("editDivModal");
+          const d = doc.data();
+          const nominal = jab === "KOORDINATOR" ? d.gaji_koordinator : d.gaji;
+          document.getElementById("userGaji").value =
+            "Rp " + nominal.toLocaleString();
         }
       }
 
-      async function updateDivision() {
-        const id = document.getElementById("editDivId").value;
-        const lat = parseFloat(document.getElementById("editDivLat").value);
-        const lon = parseFloat(document.getElementById("editDivLon").value);
-        const radius = parseFloat(
-          document.getElementById("editDivRadius").value,
+      async function openUserModal(docId = null) {
+        const snap = await db.collection("divisi").get();
+        const sel = document.getElementById("userDivisi");
+        sel.innerHTML = '<option value="">Pilih Divisi</option>';
+        snap.forEach(
+          (d) => (sel.innerHTML += `<option value="${d.id}">${d.id}</option>`),
         );
-        const inTime = document.getElementById("editDivIn").value;
-        const outTime = document.getElementById("editDivOut").value;
 
-        try {
-          await db.collection("divisi").doc(id).update({
-            lat: lat,
-            lon: lon,
-            radius_km: radius,
-            jam_masuk: inTime,
-            jam_pulang: outTime,
-          });
-          closeModal("editDivModal");
-          alert("Pengaturan divisi " + id + " berhasil diperbarui!");
-        } catch (e) {
-          alert("Gagal update: " + e.message);
+        if (docId) {
+          const doc = await db.collection("users").doc(docId).get();
+          const u = doc.data();
+          document.getElementById("editDocId").value = doc.id;
+          document.getElementById("userName").value = u.name;
+          document.getElementById("userIdField").value = u.id;
+          document.getElementById("userPhone").value = u.phone;
+          document.getElementById("userPass").value = u.password;
+          document.getElementById("userDivisi").value = u.divisi;
+          document.getElementById("userJabatan").value = u.jabatan;
+          syncGaji();
+        } else {
+          document.getElementById("editDocId").value = "";
+          ["userName", "userIdField", "userPhone", "userPass"].forEach(
+            (i) => (document.getElementById(i).value = ""),
+          );
         }
+        openModal("userModal");
       }
 
-      // --- UTILS ---
+      async function saveUser() {
+        const docId = document.getElementById("editDocId").value;
+        const data = {
+          name: document.getElementById("userName").value,
+          id: document.getElementById("userIdField").value,
+          phone: document.getElementById("userPhone").value,
+          password: document.getElementById("userPass").value,
+          divisi: document.getElementById("userDivisi").value,
+          jabatan: document.getElementById("userJabatan").value,
+          grade: "A",
+        };
+
+        setBtnLoading("btn-save-user", true, "Simpan");
+        try {
+          if (docId) await db.collection("users").doc(docId).update(data);
+          else await db.collection("users").add(data);
+          closeModal("userModal");
+          triggerSuccess();
+        } catch (e) {
+          alert("Gagal");
+        }
+        setBtnLoading("btn-save-user", false, "Simpan");
+      }
+
+      async function loadDivisions() {
+        const snap = await db.collection("divisi").get();
+        const grid = document.getElementById("divisionGrid");
+        grid.innerHTML = "";
+        snap.forEach((doc) => {
+          const d = doc.data();
+          grid.innerHTML += `
+      <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <div class="flex justify-between items-center">
+              <h4 class="font-black text-blue-600 uppercase tracking-wide">${doc.id}</h4>
+              <button onclick="deleteDivision('${doc.id}')" class="text-red-300 hover:text-red-500 transition-all"><i class="fas fa-trash"></i></button>
+          </div>
+          <div class="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                  <p class="text-[10px] text-gray-400 font-bold uppercase">Anggota</p>
+                  <p class="text-sm font-bold text-gray-700">Rp ${d.gaji.toLocaleString()}</p>
+              </div>
+              <div>
+                  <p class="text-[10px] text-gray-400 font-bold uppercase">Koordinator</p>
+                  <p class="text-sm font-bold text-blue-600">Rp ${d.gaji_koordinator.toLocaleString()}</p>
+              </div>
+          </div>
+          <div class="mt-3 pt-3 border-t border-dashed flex justify-between">
+              <div>
+                  <p class="text-[10px] text-gray-400 font-bold uppercase">Jam Masuk</p>
+                  <p class="text-xs font-bold text-gray-600">${d.jam_masuk || "--:--"}</p>
+              </div>
+              <div class="text-right">
+                  <p class="text-[10px] text-gray-400 font-bold uppercase">Jam Keluar</p>
+                  <p class="text-xs font-bold text-gray-600">${d.jam_keluar || "--:--"}</p>
+              </div>
+          </div>
+      </div>`;
+        });
+      }
+      async function saveDivision() {
+        const name = document
+          .getElementById("addDivName")
+          .value.toUpperCase()
+          .trim();
+        const g1 = parseInt(document.getElementById("addDivGajiAnggota").value);
+        const g2 = parseInt(document.getElementById("addDivGajiKoor").value);
+        const jm = document.getElementById("addDivJamMasuk").value; // Ambil Jam Masuk
+        const jk = document.getElementById("addDivJamKeluar").value; // Ambil Jam Keluar
+
+        if (!name || isNaN(g1) || isNaN(g2) || !jm || !jk)
+          return alert("Data tidak lengkap! Pastikan jam kerja sudah diisi.");
+
+        setBtnLoading("btn-save-div", true, "Simpan");
+        try {
+          await db.collection("divisi").doc(name).set({
+            gaji: g1,
+            gaji_koordinator: g2,
+            jam_masuk: jm, // Simpan ke Firebase
+            jam_keluar: jk, // Simpan ke Firebase
+          });
+          closeModal("addDivModal");
+          triggerSuccess();
+          loadDivisions();
+        } catch (e) {
+          alert("Gagal menyimpan divisi");
+        }
+        setBtnLoading("btn-save-div", false, "Simpan");
+      }
+      async function deleteUser(id) {
+        if (confirm("Hapus?")) await db.collection("users").doc(id).delete();
+      }
+      async function deleteDivision(id) {
+        if (confirm("Hapus?")) await db.collection("divisi").doc(id).delete();
+      }
+
       function openModal(id) {
-        const el = document.getElementById(id);
-        el.classList.remove("hidden");
-        el.classList.add("flex");
+        document.getElementById(id).classList.replace("hidden", "flex");
       }
       function closeModal(id) {
-        const el = document.getElementById(id);
-        el.classList.remove("flex");
-        el.classList.add("hidden");
+        document.getElementById(id).classList.replace("flex", "hidden");
       }
       function handleLogout() {
         window.location.reload();
       }
 
-      // Init
-      window.onload = () => loadStats();
+      window.onload = () => {
+        loadStats();
+        showSection("dashboard");
+      };
     </script>
   </body>
 </html>
