@@ -357,7 +357,7 @@
             <p
               class="text-[10px] text-gray-400 font-bold uppercase leading-none"
             >
-              Koordinat Kantor
+              Koordinat Dapur
             </p>
             <p
               id="officeCoordsText"
@@ -409,6 +409,7 @@
       </div>
     </div>
 
+    <!-- halaman profile -->
     <div id="profilePage" class="page-hidden p-6 bg-white min-h-screen pb-28">
       <h2 class="text-2xl font-black mb-8">Profil</h2>
       <div
@@ -425,7 +426,7 @@
         <h3 id="profileName" class="font-bold text-xl text-gray-800">
           Memuat...
         </h3>
-        <p id="profileNIK" class="text-sm text-gray-500 mb-4">NIK: --</p>
+        <p id="profileID" class="text-sm text-gray-500 mb-4">ID: --</p>
         <span
           id="profileJabatanBadge"
           class="bg-blue-100 text-blue-600 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
@@ -449,6 +450,7 @@
             <input
               type="text"
               id="editName"
+              readonly
               class="p-3 bg-gray-50 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 text-sm font-semibold"
             />
           </div>
@@ -461,6 +463,20 @@
               type="tel"
               id="editPhone"
               class="p-3 bg-gray-50 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 text-sm font-semibold"
+            />
+          </div>
+
+          <div class="flex flex-col">
+            <label
+              class="text-[10px] font-bold text-blue-600 uppercase ml-1 mb-1"
+            >
+              Password Baru
+            </label>
+            <input
+              type="password"
+              id="newPassword"
+              class="p-3 bg-gray-50 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 text-sm font-semibold"
+              placeholder="Kosongkan jika tidak ingin ganti"
             />
           </div>
           <button
@@ -479,9 +495,105 @@
       </button>
     </div>
 
+    <!-- ================= RIWAYAT PAGE ================= -->
+    <section id="riwayatPage" class="page-hidden min-h-screen bg-gray-50 pb-24">
+      <!-- HEADER -->
+      <div class="bg-white shadow-sm px-5 py-4 flex items-center gap-3">
+        <div>
+          <h1 class="text-lg font-bold text-gray-800">Riwayat Presensi</h1>
+          <p class="text-xs text-gray-500">Data absensi Anda</p>
+        </div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="p-5 space-y-5">
+        <!-- SUMMARY CARD -->
+        <div class="bg-white rounded-2xl shadow p-4">
+          <h2 class="text-sm font-semibold text-gray-600 mb-3">
+            Statistik Kehadiran
+          </h2>
+
+          <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="bg-green-50 rounded-xl py-3">
+              <p id="totalHadir" class="text-lg font-bold text-green-600">0</p>
+              <p class="text-xs text-gray-500">Hadir</p>
+            </div>
+
+            <div class="bg-yellow-50 rounded-xl py-3">
+              <p id="totalToleransi" class="text-lg font-bold text-yellow-600">
+                0
+              </p>
+              <p class="text-xs text-gray-500">Toleransi</p>
+            </div>
+
+            <div class="bg-red-50 rounded-xl py-3">
+              <p id="totalTelat" class="text-lg font-bold text-red-600">0</p>
+              <p class="text-xs text-gray-500">Telat</p>
+            </div>
+          </div>
+
+          <!-- PROGRESS KEHADIRAN -->
+          <!-- CIRCULAR PROGRESS -->
+          <div class="flex justify-center mt-6">
+            <div class="relative w-36 h-36">
+              <svg class="w-36 h-36 -rotate-90">
+                <!-- Background circle -->
+                <circle
+                  cx="70"
+                  cy="70"
+                  r="60"
+                  stroke="#e5e7eb"
+                  stroke-width="12"
+                  fill="none"
+                />
+
+                <!-- Progress circle -->
+                <circle
+                  id="progressCircle"
+                  cx="70"
+                  cy="70"
+                  r="60"
+                  stroke-width="12"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-dasharray="377"
+                  stroke-dashoffset="377"
+                  class="transition-all duration-1000 ease-out"
+                />
+              </svg>
+
+              <!-- Percentage text -->
+              <div
+                class="absolute inset-0 flex flex-col items-center justify-center"
+              >
+                <span
+                  id="persentaseHadir"
+                  class="text-2xl font-bold text-gray-800"
+                >
+                  0%
+                </span>
+                <span class="text-xs text-gray-500"> Kehadiran </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIWAYAT LIST -->
+        <div>
+          <h2 class="text-sm font-semibold text-gray-600 mb-3">
+            Daftar Kehadiran
+          </h2>
+
+          <div id="listRiwayat" class="space-y-3">
+            <!-- Data akan dimasukkan oleh JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div
       id="bottomNav"
-      class="page-hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto h-24 bg-white/90 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center px-8 z-50"
+      class="page-hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto h-24 bg-white/90 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center px-6 z-50"
     >
       <button
         onclick="pindahKe('dashboardPage')"
@@ -491,19 +603,34 @@
         <i class="fas fa-home text-xl"></i>
         <span class="text-[9px] font-bold mt-1 uppercase">Home</span>
       </button>
+
+      <button
+        onclick="pindahKe('riwayatPage')"
+        id="nav-riwayat"
+        class="text-gray-400 flex flex-col items-center"
+      >
+        <i class="fas fa-history text-xl"></i>
+        <span class="text-[9px] font-bold mt-1 uppercase">Riwayat</span>
+      </button>
+
+      <!-- ABSEN TENGAH (Highlight) -->
       <button
         onclick="pindahKe('scanPage')"
-        class="relative -mt-12 transition-transform active:scale-95"
+        id="nav-scan"
+        class="bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center -mt-10 shadow-xl"
       >
-        <div
-          class="w-16 h-16 bg-blue-600 rounded-full border-[6px] border-slate-50 shadow-blue-200 shadow-2xl flex flex-col items-center justify-center text-white"
-        >
-          <i class="fas fa-camera text-lg"></i>
-          <span class="text-[7px] font-black uppercase mt-0.5 tracking-tighter"
-            >Absen</span
-          >
-        </div>
+        <i class="fas fa-qrcode text-2xl"></i>
       </button>
+
+      <button
+        onclick="pindahKe('notifPage')"
+        id="nav-notif"
+        class="text-gray-400 flex flex-col items-center"
+      >
+        <i class="fas fa-bell text-xl"></i>
+        <span class="text-[9px] font-bold mt-1 uppercase">Notif</span>
+      </button>
+
       <button
         onclick="pindahKe('profilePage')"
         id="nav-user"
@@ -513,7 +640,6 @@
         <span class="text-[9px] font-bold mt-1 uppercase">Profil</span>
       </button>
     </div>
-
     <script>
       // --- FIREBASE CONFIGURATION ---
       const firebaseConfig = {
@@ -534,6 +660,7 @@
       let officeData = { lat: 0, lon: 0, radius: 0 };
       let map, userMarker, officeCircle;
       let watchId = null;
+      let previewData = null;
 
       window.onload = () => {
         // Cek Ingat Saya
@@ -557,7 +684,15 @@
       };
 
       function pindahKe(pageId) {
-        const pages = ["loginPage", "dashboardPage", "profilePage", "scanPage"];
+        const pages = [
+          "loginPage",
+          "dashboardPage",
+          "profilePage",
+          "scanPage",
+          "riwayatPage",
+          "notifPage",
+        ];
+
         pages.forEach((p) => {
           document
             .getElementById(p)
@@ -569,6 +704,7 @@
           .classList.replace("page-hidden", "page-visible");
 
         const nav = document.getElementById("bottomNav");
+
         if (pageId === "loginPage" || pageId === "scanPage") {
           nav.classList.add("page-hidden");
           nav.classList.remove("flex");
@@ -577,18 +713,25 @@
           nav.classList.add("flex");
         }
 
+        // 🔥 LOAD RIWAYAT HANYA SAAT DIBUTUHKAN
+        if (pageId === "riwayatPage") {
+          if (currentUserUID) {
+            console.log(currentUserUID);
+            loadRiwayat();
+          } else {
+            console.log("UID belum tersedia");
+          }
+        }
+
         if (pageId === "scanPage") {
-          // CEK APAKAH SUDAH PERNAH DIIZINKAN
           const camOk = localStorage.getItem("camera_granted");
           const locOk = localStorage.getItem("location_granted");
 
           if (camOk && locOk) {
-            // Jika sudah pernah diizinkan, langsung jalankan tanpa modal
             document.getElementById("permissionModal").classList.add("hidden");
             startCamera();
             initMapAndLocation();
           } else {
-            // Jika belum, baru tampilkan modal
             document
               .getElementById("permissionModal")
               .classList.remove("hidden");
@@ -602,10 +745,29 @@
           pageId === "dashboardPage"
             ? "text-blue-600 flex flex-col items-center"
             : "text-gray-400 flex flex-col items-center";
+
         document.getElementById("nav-user").className =
           pageId === "profilePage"
             ? "text-blue-600 flex flex-col items-center"
             : "text-gray-400 flex flex-col items-center";
+
+        const navItems = {
+          dashboardPage: "nav-home",
+          riwayatPage: "nav-riwayat",
+          notifPage: "nav-notif",
+
+          profilePage: "nav-user",
+        };
+
+        Object.values(navItems).forEach((id) => {
+          document.getElementById(id).className =
+            "text-gray-400 flex flex-col items-center";
+        });
+
+        if (navItems[pageId]) {
+          document.getElementById(navItems[pageId]).className =
+            "text-blue-600 flex flex-col items-center";
+        }
       }
 
       async function requestAllPermissions() {
@@ -625,20 +787,37 @@
           // 2. Jika kamera berhasil, minta izin lokasi
           if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-              (pos) => {
-                // Berhasil mendapatkan posisi pertama kali
-                userLocation.lat = pos.coords.latitude;
-                userLocation.lon = pos.coords.longitude;
-                // Lanjutkan ke monitoring lokasi real-time
-                localStorage.setItem("location_granted", "true");
-                initMapAndLocation();
+              (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                // 🚨 Validasi Akurasi
+                if (accuracy > 100) {
+                  alert(
+                    "Akurasi GPS terlalu rendah. Aktifkan GPS dengan benar.",
+                  );
+                  return;
+                }
+
+                // 🚨 Indikasi fake GPS (kecepatan tidak wajar)
+                if (position.coords.speed && position.coords.speed > 300) {
+                  alert("Terdeteksi manipulasi lokasi.");
+                  return;
+                }
+
+                userLocation = {
+                  lat: latitude,
+                  lon: longitude,
+                  accuracy: accuracy,
+                };
               },
-              (err) => {
-                // Jika user menolak lokasi
-                alert("Izin Lokasi ditolak. Anda tidak bisa absen.");
-                pindahKe("dashboardPage");
+              (error) => {
+                alert("Gagal mengambil lokasi");
               },
-              { enableHighAccuracy: true, timeout: 10000 },
+              {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 10000,
+              },
             );
           } else {
             alert("Browser Anda tidak mendukung Geolocation.");
@@ -738,7 +917,7 @@
             document.getElementById("shiftMasukText").innerText =
               dataDivisi.jam_masuk || "08:00";
             document.getElementById("shiftPulangText").innerText =
-              dataDivisi.jam_pulang || "16:00";
+              dataDivisi.jam_keluar || "16:00";
 
             let gaji = 0;
 
@@ -862,19 +1041,144 @@
       }
 
       async function prosesAbsensi() {
+        const now = new Date();
+        const jamSekarang = now.getHours() * 60 + now.getMinutes();
+
+        const jamMasukText = document
+          .getElementById("shiftMasukText")
+          .innerText.split(":");
+
+        const jamMasuk =
+          parseInt(jamMasukText[0]) * 60 + parseInt(jamMasukText[1]);
+
+        const toleransiMenit = 10;
+
+        if (jamSekarang < jamMasuk) {
+          alert("Belum jam masuk. Anda belum bisa melakukan absensi.");
+          return;
+        }
+
+        let statusAbsen = "Hadir";
+        if (jamSekarang > jamMasuk + toleransiMenit) {
+          statusAbsen = "Telat";
+        }
+
         const video = document.getElementById("videoFeed");
         const canvas = document.getElementById("captureCanvas");
         const context = canvas.getContext("2d");
-        const today = new Date().toISOString().split("T")[0];
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // ================= WATERMARK =================
+        const ctx = canvas.getContext("2d");
+
+        const nowFull = new Date().toLocaleString("id-ID", {
+          dateStyle: "full",
+          timeStyle: "medium",
+        });
+
+        const latText = userLocation.lat?.toFixed(6) || "-";
+        const lonText = userLocation.lon?.toFixed(6) || "-";
+
+        // ================= MINI MAP =================
+        if (userLocation.lat && userLocation.lon) {
+          const mapFrame = document.getElementById("previewMap");
+
+          mapFrame.src = `https://maps.google.com/maps?q=${userLocation.lat},${userLocation.lon}&z=17&output=embed`;
+        }
+
+        // ================= REVERSE GEOCODING =================
+        // ================= REVERSE GEOCODING SAFE =================
+        if (userLocation?.lat && userLocation?.lon) {
+          const addressEl = document.getElementById("previewAddress");
+
+          if (addressEl) {
+            addressEl.innerText = "Mengambil alamat...";
+          }
+
+          try {
+            const alamat = await ambilAlamat(
+              userLocation.lat,
+              userLocation.lon,
+            );
+
+            if (addressEl) {
+              addressEl.innerText = alamat;
+            }
+
+            // Pastikan previewData ada sebelum assign
+            if (!previewData) previewData = {};
+
+            previewData.address = alamat;
+          } catch (err) {
+            if (addressEl) {
+              addressEl.innerText = "Gagal mengambil alamat";
+            }
+          }
+        }
+
+        // Background semi transparan
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(0, canvas.height - 110, canvas.width, 110);
+
+        // Text styling
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 24px Arial";
+        ctx.fillText(nowFull, 20, canvas.height - 70);
+
+        ctx.font = "20px Arial";
+        ctx.fillText(`Lat: ${latText}`, 20, canvas.height - 40);
+        ctx.fillText(`Lon: ${lonText}`, 20, canvas.height - 15);
+
+        // Export image
+        const base64Photo = canvas.toDataURL("image/jpeg", 0.8);
+
         const time = new Date().toLocaleTimeString("id-ID", {
           hour: "2-digit",
           minute: "2-digit",
         });
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const base64Photo = canvas.toDataURL("image/jpeg", 0.5);
+        previewData = {
+          photo: base64Photo,
+          time: time,
+          lat: userLocation.lat,
+          lon: userLocation.lon,
+          status: statusAbsen,
+          address: null,
+        };
+
+        const alamat = await ambilAlamat(userLocation.lat, userLocation.lon);
+
+        previewData.address = alamat;
+        document.getElementById("previewAddress").innerText = alamat;
+
+        // Isi preview UI
+        document.getElementById("previewImage").src = base64Photo;
+        document.getElementById("previewTime").innerText = time;
+        document.getElementById("previewLat").innerText =
+          userLocation.lat?.toFixed(6) || "-";
+        document.getElementById("previewLon").innerText =
+          userLocation.lon?.toFixed(6) || "-";
+
+        // Tampilkan preview
+        document.getElementById("previewPage").classList.remove("page-hidden");
+      }
+
+      async function konfirmasiAbsen() {
+        // if (!userLocation || !userLocation.accuracy) {
+        //   alert("Lokasi tidak valid.");
+        //   return;
+        // }
+
+        if (userLocation.accuracy > 100) {
+          alert("Akurasi GPS buruk. Coba lagi.");
+          return;
+        }
+        if (!previewData) return;
+
+        const today = new Date().toISOString().split("T")[0];
 
         try {
           const attRef = db
@@ -882,17 +1186,19 @@
             .doc(currentUserUID)
             .collection("daily")
             .doc(today);
+
           const doc = await attRef.get();
 
           if (!doc.exists || !doc.data().clockIn) {
             await attRef.set({
               date: today,
-              clockIn: time,
-              photoIn: base64Photo,
-              lat: userLocation.lat,
-              lon: userLocation.lon,
+              clockIn: previewData.time,
+              photoIn: previewData.photo,
+              lat: previewData.lat,
+              lon: previewData.lon,
               timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             });
+
             await db
               .collection("users")
               .doc(currentUserUID)
@@ -901,17 +1207,24 @@
               });
           } else {
             await attRef.update({
-              clockOut: time,
-              photoOut: base64Photo,
-              last_lat: userLocation.lat,
-              last_lon: userLocation.lon,
+              clockOut: previewData.time,
+              photoOut: previewData.photo,
+              last_lat: previewData.lat,
+              last_lon: previewData.lon,
+              status: previewData.status,
             });
           }
+
+          document.getElementById("previewPage").classList.add("page-hidden");
           document.getElementById("successModal").classList.remove("hidden");
           pindahKe("dashboardPage");
         } catch (e) {
           alert("Gagal: " + e.message);
         }
+      }
+
+      function tutupPreview() {
+        document.getElementById("previewPage").classList.add("page-hidden");
       }
 
       function updateUI(data) {
@@ -922,8 +1235,8 @@
           data.name || "Karyawan";
         document.getElementById("editName").value = data.name || "";
         document.getElementById("editPhone").value = data.phone || "";
-        document.getElementById("profileNIK").innerText =
-          "NIK: " + (data.nik || "---");
+        document.getElementById("profileID").innerText =
+          "ID: " + (data.id || "---");
         document.getElementById("divisiText").innerText = data.divisi || "---";
         document.getElementById("jabatanText").innerText =
           data.jabatan || "---";
@@ -1012,14 +1325,21 @@
       }
 
       async function updateFirebaseProfile() {
-        const newName = document.getElementById("editName").value;
         const newPhone = document.getElementById("editPhone").value;
+        const newPass = document.getElementById("newPassword").value;
+
+        let updateData = {
+          phone: newPhone,
+        };
+
+        if (newPass) {
+          updateData.password = newPass;
+        }
+
         try {
-          await db
-            .collection("users")
-            .doc(currentUserUID)
-            .update({ name: newName, phone: newPhone });
-          alert("Profil diperbarui!");
+          await db.collection("users").doc(currentUserUID).update(updateData);
+          alert("Data berhasil diperbarui!");
+          document.getElementById("newPassword").value = "";
         } catch (e) {
           alert(e.message);
         }
@@ -1037,6 +1357,172 @@
 
       function tutupOutsideModal() {
         document.getElementById("outsideModal").classList.add("hidden");
+      }
+
+      async function loadRiwayat() {
+        if (!currentUserUID) return;
+
+        const list = document.getElementById("listRiwayat");
+        list.innerHTML = `
+    <div class="text-center text-gray-400 py-6">
+      Loading...
+    </div>
+  `;
+
+        let hadir = 0;
+        let toleransi = 0;
+        let telat = 0;
+
+        try {
+          const snapshot = await db
+            .collection("attendance")
+            .doc(currentUserUID)
+            .collection("daily")
+            .orderBy("date", "desc")
+            .get();
+
+          list.innerHTML = "";
+
+          if (snapshot.empty) {
+            list.innerHTML = `
+        <div class="text-center text-gray-400 py-6">
+          Belum ada riwayat presensi
+        </div>
+      `;
+            return;
+          }
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+
+            let status = "Hadir";
+            let warna = "bg-green-100 text-green-600";
+
+            if (data.clockIn) {
+              const jamMasukText = document
+                .getElementById("shiftMasukText")
+                .innerText.split(":");
+
+              const jamMasuk =
+                parseInt(jamMasukText[0]) * 60 + parseInt(jamMasukText[1]);
+
+              const jamAbsen = data.clockIn.split(":");
+              const menitAbsen =
+                parseInt(jamAbsen[0]) * 60 + parseInt(jamAbsen[1]);
+
+              if (menitAbsen > jamMasuk + 15) {
+                status = "Telat";
+                warna = "bg-red-100 text-red-600";
+                telat++;
+              } else if (menitAbsen > jamMasuk) {
+                status = "Toleransi";
+                warna = "bg-yellow-100 text-yellow-600";
+                toleransi++;
+              } else {
+                hadir++;
+              }
+            }
+
+            list.innerHTML += `
+        <div class="bg-white rounded-2xl p-4 shadow opacity-0 translate-y-3 transition-all duration-500">
+          <div class="flex justify-between items-center mb-2">
+            <p class="font-semibold">${data.date}</p>
+            <span class="px-3 py-1 text-xs font-bold rounded-full ${warna}">
+              ${status}
+            </span>
+          </div>
+          <div class="text-sm text-gray-500 flex justify-between">
+            <span>Masuk: ${data.clockIn || "-"}</span>
+            <span>Pulang: ${data.clockOut || "-"}</span>
+          </div>
+        </div>
+      `;
+          });
+
+          // =============================
+          // UPDATE TOTAL STATISTIK
+          // =============================
+          document.getElementById("totalHadir").innerText = hadir;
+          document.getElementById("totalToleransi").innerText = toleransi;
+          document.getElementById("totalTelat").innerText = telat;
+
+          // =============================
+          // HITUNG PROGRESS SETELAH LOOP
+          // =============================
+          const totalData = hadir + toleransi + telat;
+          let persen =
+            totalData > 0 ? Math.round((hadir / totalData) * 100) : 0;
+
+          const circle = document.getElementById("progressCircle");
+          const persentaseText = document.getElementById("persentaseHadir");
+
+          persentaseText.innerText = persen + "%";
+
+          const radius = 60;
+          const circumference = 2 * Math.PI * radius;
+          const offset = circumference - (persen / 100) * circumference;
+
+          circle.style.strokeDasharray = circumference;
+          circle.style.strokeDashoffset = circumference;
+
+          if (persen >= 90) {
+            circle.setAttribute("stroke", "#22c55e");
+          } else if (persen >= 75) {
+            circle.setAttribute("stroke", "#eab308");
+          } else {
+            circle.setAttribute("stroke", "#ef4444");
+          }
+
+          setTimeout(() => {
+            circle.style.strokeDashoffset = offset;
+          }, 300);
+
+          // =============================
+          // ANIMASI CARD SMOOTH
+          // =============================
+          setTimeout(() => {
+            document.querySelectorAll("#listRiwayat > div").forEach((el, i) => {
+              setTimeout(() => {
+                el.classList.remove("opacity-0", "translate-y-3");
+              }, i * 80);
+            });
+          }, 100);
+        } catch (e) {
+          console.log(e);
+          list.innerHTML = `
+      <div class="text-center text-red-400 py-6">
+        Gagal memuat data
+      </div>
+    `;
+        }
+      }
+
+      async function ambilAlamat(lat, lon) {
+        // 🚨 VALIDASI KERAS
+        if (!lat || !lon) {
+          console.log("Lokasi belum tersedia");
+          return "Lokasi belum tersedia";
+        }
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
+            {
+              headers: {
+                "User-Agent": "AbsensiApp/1.0",
+              },
+            },
+          );
+
+          if (!res.ok) throw new Error("Gagal request");
+
+          const data = await res.json();
+
+          return data.display_name || "Alamat tidak ditemukan";
+        } catch (err) {
+          console.error("Reverse geocoding error:", err);
+          return "Gagal mengambil alamat";
+        }
       }
 
       if ("serviceWorker" in navigator) {
@@ -1083,17 +1569,89 @@
           <i class="fas fa-map-marker-alt"></i>
         </div>
         <h2 class="text-xl font-extrabold text-gray-800 mb-2">
-          Di Luar Area Kantor
+          Di Luar Area Dapur
         </h2>
         <p class="text-gray-500 text-sm mb-8">
           Anda berada di luar radius yang ditentukan. Silakan mendekat ke lokasi
-          kantor untuk melakukan absensi.
+          dapur untuk melakukan absensi.
         </p>
         <button
           onclick="tutupOutsideModal()"
           class="w-full bg-red-600 text-white p-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all"
         >
           Mengerti
+        </button>
+      </div>
+    </div>
+
+    <section id="notifPage" class="page-hidden min-h-screen bg-gray-50 pb-24">
+      <div class="bg-white shadow-sm px-5 py-4">
+        <h1 class="text-lg font-bold text-gray-800">Notifikasi</h1>
+      </div>
+
+      <div class="p-5 space-y-3">
+        <div class="bg-white p-4 rounded-2xl shadow text-sm text-gray-600">
+          🔔 Belum ada notifikasi
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PREVIEW ABSEN ================= -->
+    <div
+      id="previewPage"
+      class="page-hidden fixed inset-0 bg-white z-[150] p-6 overflow-y-auto"
+    >
+      <div class="flex items-center gap-4 mb-6">
+        <button
+          onclick="tutupPreview()"
+          class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center"
+        >
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2 class="text-xl font-black">Konfirmasi Absensi</h2>
+      </div>
+
+      <div class="space-y-5">
+        <img id="previewImage" class="w-full rounded-3xl shadow-lg" />
+
+        <!-- Mini Map -->
+        <div class="rounded-2xl overflow-hidden shadow-md">
+          <iframe
+            id="previewMap"
+            class="w-full h-40"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+        </div>
+
+        <div class="flex justify-between">
+          <span class="text-gray-500">Alamat</span>
+          <span
+            id="previewAddress"
+            class="text-right text-xs font-medium max-w-[60%]"
+          ></span>
+        </div>
+
+        <div class="bg-gray-50 rounded-2xl p-4 text-sm space-y-2">
+          <div class="flex justify-between">
+            <span class="text-gray-500">Jam Absen</span>
+            <span id="previewTime" class="font-bold text-gray-800"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">Latitude</span>
+            <span id="previewLat" class="font-mono text-xs"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">Longitude</span>
+            <span id="previewLon" class="font-mono text-xs"></span>
+          </div>
+        </div>
+
+        <button
+          onclick="konfirmasiAbsen()"
+          class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all"
+        >
+          Konfirmasi Absen
         </button>
       </div>
     </div>
