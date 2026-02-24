@@ -758,6 +758,10 @@
             document.getElementById("permissionModal").classList.add("hidden");
             startCamera();
             initMapAndLocation();
+
+            setTimeout(() => {
+              if (map) map.invalidateSize();
+            }, 500);
           } else {
             document
               .getElementById("permissionModal")
@@ -810,6 +814,7 @@
           document.getElementById("videoFeed").srcObject = stream;
           // Simpan status bahwa kamera sudah diizinkan
           localStorage.setItem("camera_granted", "true");
+          localStorage.setItem("location_granted", "true");
 
           // 2. Jika kamera berhasil, minta izin lokasi
           if (navigator.geolocation) {
@@ -822,6 +827,11 @@
                   alert(
                     "Akurasi GPS terlalu rendah. Aktifkan GPS dengan benar.",
                   );
+                  return;
+                }
+
+                if (position.coords.accuracy > 200) {
+                  updateGPS(false, "Lokasi tidak presisi");
                   return;
                 }
 
@@ -988,47 +998,40 @@
         }
 
         if (navigator.geolocation) {
-          watchId = navigator.geolocation.watchPosition(
-            (pos) => {
-              userLocation.lat = pos.coords.latitude;
-              userLocation.lon = pos.coords.longitude;
+          setInterval(updateMapPosition, 2000);
+        }
+      }
 
-              const dist = calculateDistance(
-                userLocation.lat,
-                userLocation.lon,
-                officeData.lat,
-                officeData.lon,
-              );
-              const isInside = dist <= officeData.radius;
+      function updateMapPosition() {
+        if (!userLocation.lat || !userLocation.lon) return;
 
-              userMarker.setLatLng([userLocation.lat, userLocation.lon]);
-              map.panTo([userLocation.lat, userLocation.lon]);
+        userMarker.setLatLng([userLocation.lat, userLocation.lon]);
+        map.panTo([userLocation.lat, userLocation.lon]);
 
-              const badge = document.getElementById("radiusBadge");
-              const capBtn = document.getElementById("captureBtn");
+        const dist = calculateDistance(
+          userLocation.lat,
+          userLocation.lon,
+          officeData.lat,
+          officeData.lon,
+        );
 
-              if (isInside) {
-                badge.innerText = "Dalam Radius";
-                badge.className =
-                  "px-3 py-1 rounded-full text-[9px] font-black uppercase bg-green-100 text-green-600 border border-green-200";
-                capBtn.disabled = false;
-                capBtn.style.opacity = "1";
-              } else {
-                badge.innerText = "Luar Area";
-                badge.className =
-                  "px-3 py-1 rounded-full text-[9px] font-black uppercase bg-red-100 text-red-600 border border-red-200";
-                capBtn.disabled = true;
-                capBtn.style.opacity = "0.4";
-                document
-                  .getElementById("outsideModal")
-                  .classList.remove("hidden");
-              }
-            },
-            (err) => {
-              console.error(err);
-            },
-            { enableHighAccuracy: true },
-          );
+        const isInside = dist <= officeData.radius;
+
+        const badge = document.getElementById("radiusBadge");
+        const capBtn = document.getElementById("captureBtn");
+
+        if (isInside) {
+          badge.innerText = "Dalam Radius";
+          badge.className =
+            "px-3 py-1 rounded-full text-[9px] font-black uppercase bg-green-100 text-green-600 border border-green-200";
+          capBtn.disabled = false;
+          capBtn.style.opacity = "1";
+        } else {
+          badge.innerText = "Luar Area";
+          badge.className =
+            "px-3 py-1 rounded-full text-[9px] font-black uppercase bg-red-100 text-red-600 border border-red-200";
+          capBtn.disabled = true;
+          capBtn.style.opacity = "0.4";
         }
       }
 
@@ -1076,6 +1079,10 @@
         if (userLocation.accuracy > 100) {
           alert("Akurasi GPS buruk. Coba lagi.");
           return;
+        }
+
+        if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
+          return "Lokasi belum tersedia";
         }
 
         const now = new Date();
@@ -1538,7 +1545,12 @@
       let gpsWatchId = null;
 
       function startGPSMonitor() {
-        if (gpsWatchId) return; // jangan buat 2 watcher
+        if (!navigator.geolocation) {
+          updateGPS(false, "Tidak didukung");
+          return;
+        }
+
+        if (gpsWatchId) return;
 
         gpsWatchId = navigator.geolocation.watchPosition(
           (position) => {
@@ -1548,14 +1560,14 @@
               accuracy: position.coords.accuracy,
             };
 
-            const accuracy = position.coords.accuracy;
+            const acc = position.coords.accuracy;
 
-            if (accuracy <= 20) {
-              updateGPS(true, `Akurat (${Math.round(accuracy)}m)`);
-            } else if (accuracy <= 50) {
-              updateGPS(true, `Cukup (${Math.round(accuracy)}m)`);
+            if (acc <= 20) {
+              updateGPS(true, `Akurat (${Math.round(acc)}m)`);
+            } else if (acc <= 50) {
+              updateGPS(true, `Cukup (${Math.round(acc)}m)`);
             } else {
-              updateGPS(true, `Lemah (${Math.round(accuracy)}m)`);
+              updateGPS(true, `Lemah (${Math.round(acc)}m)`);
             }
           },
           () => {
@@ -1564,7 +1576,7 @@
           {
             enableHighAccuracy: true,
             maximumAge: 0,
-            timeout: 10000,
+            timeout: 15000,
           },
         );
       }
