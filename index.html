@@ -1071,17 +1071,19 @@
       }
 
       async function prosesAbsensi() {
+        showLoading("Mengupload foto...");
         if (!userLocation.lat || !userLocation.lon) {
           alert("Lokasi belum siap. Tunggu GPS stabil.");
+          showLoading("Mengupload foto...");
           return;
         }
 
-        // if (userLocation.accuracy > 100) {
-        //   alert("Akurasi GPS buruk. Coba lagi.");
-        //   return;
-        // }
-
-       
+        console.log(userLocation.accuracy);
+        if (userLocation.accuracy > 200) {
+          alert("Akurasi GPS buruk. Coba lagi.");
+          hideLoading();
+          return;
+        }
 
         const now = new Date();
         const jamSekarang = now.getHours() * 60 + now.getMinutes();
@@ -1172,18 +1174,21 @@
           `https://maps.google.com/maps?q=${userLocation.lat},${userLocation.lon}&z=17&output=embed`;
 
         document.getElementById("previewPage").classList.remove("page-hidden");
+        hideLoading();
       }
 
       async function konfirmasiAbsen() {
+        showLoading("Mengirim absensi...");
         // if (!userLocation || !userLocation.accuracy) {
         //   alert("Lokasi tidak valid.");
         //   return;
         // }
 
-        // if (userLocation.accuracy > 100) {
-        //   alert("Akurasi GPS buruk. Coba lagi.");
-        //   return;
-        // }
+        console.log(userLocation.accuracy);
+        if (userLocation.accuracy > 200) {
+          alert("Akurasi GPS buruk. Coba lagi.");
+          return;
+        }
         if (!previewData) return;
 
         const today = new Date().toISOString().split("T")[0];
@@ -1222,7 +1227,7 @@
               status: previewData.status,
             });
           }
-
+          hideLoading();
           document.getElementById("previewPage").classList.add("page-hidden");
           document.getElementById("successModal").classList.remove("hidden");
           pindahKe("dashboardPage");
@@ -1695,6 +1700,19 @@
           registration.waiting.postMessage({ type: "SKIP_WAITING" });
         };
       }
+
+      function showLoading(text = "Memproses...") {
+        document.getElementById("loadingText").innerText = text;
+        const modal = document.getElementById("loadingModal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      function hideLoading() {
+        const modal = document.getElementById("loadingModal");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
     </script>
     <!-- MODAL SUKSES -->
     <div
@@ -1840,8 +1858,23 @@
         </button>
       </div>
     </div>
+
+    <!-- Loading Modal -->
+    <div
+      id="loadingModal"
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center z-[9999]"
+    >
+      <div
+        class="bg-white px-6 py-5 rounded-2xl shadow-2xl flex flex-col items-center gap-4 animate-fadeIn"
+      >
+        <div
+          class="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin"
+        ></div>
+
+        <p id="loadingText" class="text-sm font-semibold text-gray-700">
+          Memproses...
+        </p>
+      </div>
+    </div>
   </body>
 </html>
-
-
-
