@@ -193,6 +193,30 @@
       </nav>
 
       <main class="p-4 space-y-5">
+        <!-- ===== STATUS SYSTEM BAR ===== -->
+        <div class="bg-white rounded-2xl shadow-md p-4 mb-4 space-y-3">
+          <!-- GPS -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div id="gpsDot" class="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span class="text-sm font-semibold">GPS</span>
+            </div>
+            <span id="gpsStatus" class="text-xs text-gray-500"
+              >Mengecek...</span
+            >
+          </div>
+
+          <!-- Network -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div id="netDot" class="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span class="text-sm font-semibold">Jaringan</span>
+            </div>
+            <span id="netStatus" class="text-xs text-gray-500"
+              >Mengecek...</span
+            >
+          </div>
+        </div>
         <div class="grid grid-cols-2 gap-4">
           <div
             class="bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col items-center relative h-44 justify-center text-center"
@@ -674,6 +698,9 @@
           document.getElementById("rememberMe").checked = true;
         }
 
+        startGPSMonitor();
+        startNetworkMonitor();
+
         if (savedUID) {
           currentUserUID = savedUID;
           loadUserData(savedUID);
@@ -1041,6 +1068,16 @@
       }
 
       async function prosesAbsensi() {
+        if (!userLocation.lat || !userLocation.lon) {
+          alert("Lokasi belum siap. Tunggu GPS stabil.");
+          return;
+        }
+
+        if (userLocation.accuracy > 100) {
+          alert("Akurasi GPS buruk. Coba lagi.");
+          return;
+        }
+
         const now = new Date();
         const jamSekarang = now.getHours() * 60 + now.getMinutes();
 
@@ -1051,118 +1088,84 @@
         const jamMasuk =
           parseInt(jamMasukText[0]) * 60 + parseInt(jamMasukText[1]);
 
-        const toleransiMenit = 10;
-
-        if (jamSekarang < jamMasuk) {
-          alert("Belum jam masuk. Anda belum bisa melakukan absensi.");
-          return;
-        }
+        const toleransiMenit = 15;
 
         let statusAbsen = "Hadir";
+
         if (jamSekarang > jamMasuk + toleransiMenit) {
           statusAbsen = "Telat";
+        } else if (jamSekarang > jamMasuk) {
+          statusAbsen = "Toleransi";
         }
 
         const video = document.getElementById("videoFeed");
         const canvas = document.getElementById("captureCanvas");
-        const context = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d");
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // ================= WATERMARK =================
-        const ctx = canvas.getContext("2d");
-
+        // ===== WATERMARK =====
         const nowFull = new Date().toLocaleString("id-ID", {
           dateStyle: "full",
           timeStyle: "medium",
         });
 
-        const latText = userLocation.lat?.toFixed(6) || "-";
-        const lonText = userLocation.lon?.toFixed(6) || "-";
-
-        // ================= MINI MAP =================
-        if (userLocation.lat && userLocation.lon) {
-          const mapFrame = document.getElementById("previewMap");
-
-          mapFrame.src = `https://maps.google.com/maps?q=${userLocation.lat},${userLocation.lon}&z=17&output=embed`;
-        }
-
-        // ================= REVERSE GEOCODING =================
-        // ================= REVERSE GEOCODING SAFE =================
-        if (userLocation?.lat && userLocation?.lon) {
-          const addressEl = document.getElementById("previewAddress");
-
-          if (addressEl) {
-            addressEl.innerText = "Mengambil alamat...";
-          }
-
-          try {
-            const alamat = await ambilAlamat(
-              userLocation.lat,
-              userLocation.lon,
-            );
-
-            if (addressEl) {
-              addressEl.innerText = alamat;
-            }
-
-            // Pastikan previewData ada sebelum assign
-            if (!previewData) previewData = {};
-
-            previewData.address = alamat;
-          } catch (err) {
-            if (addressEl) {
-              addressEl.innerText = "Gagal mengambil alamat";
-            }
-          }
-        }
-
-        // Background semi transparan
         ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(0, canvas.height - 110, canvas.width, 110);
+        ctx.fillRect(0, canvas.height - 120, canvas.width, 120);
 
-        // Text styling
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 24px Arial";
-        ctx.fillText(nowFull, 20, canvas.height - 70);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 22px Arial";
+        ctx.fillText(nowFull, 20, canvas.height - 80);
+        ctx.fillText(
+          `Lat: ${userLocation.lat.toFixed(6)}`,
+          20,
+          canvas.height - 50,
+        );
+        ctx.fillText(
+          `Lon: ${userLocation.lon.toFixed(6)}`,
+          20,
+          canvas.height - 25,
+        );
 
-        ctx.font = "20px Arial";
-        ctx.fillText(`Lat: ${latText}`, 20, canvas.height - 40);
-        ctx.fillText(`Lon: ${lonText}`, 20, canvas.height - 15);
-
-        // Export image
         const base64Photo = canvas.toDataURL("image/jpeg", 0.8);
 
-        const time = new Date().toLocaleTimeString("id-ID", {
+        const time = now.toLocaleTimeString("id-ID", {
           hour: "2-digit",
           minute: "2-digit",
         });
 
+        // ===== REVERSE GEOCODING (HANYA 1X) =====
+        let alamat = "Mengambil alamat...";
+
+        try {
+          alamat = await ambilAlamat(userLocation.lat, userLocation.lon);
+        } catch {
+          alamat = "Gagal mengambil alamat";
+        }
+
         previewData = {
           photo: base64Photo,
-          time: time,
+          time,
           lat: userLocation.lat,
           lon: userLocation.lon,
           status: statusAbsen,
-          address: null,
+          address: alamat,
         };
 
-        const alamat = await ambilAlamat(userLocation.lat, userLocation.lon);
-
-        previewData.address = alamat;
-        document.getElementById("previewAddress").innerText = alamat;
-
-        // Isi preview UI
+        // ===== UPDATE PREVIEW UI =====
         document.getElementById("previewImage").src = base64Photo;
         document.getElementById("previewTime").innerText = time;
         document.getElementById("previewLat").innerText =
-          userLocation.lat?.toFixed(6) || "-";
+          userLocation.lat.toFixed(6);
         document.getElementById("previewLon").innerText =
-          userLocation.lon?.toFixed(6) || "-";
+          userLocation.lon.toFixed(6);
+        document.getElementById("previewAddress").innerText = alamat;
 
-        // Tampilkan preview
+        document.getElementById("previewMap").src =
+          `https://maps.google.com/maps?q=${userLocation.lat},${userLocation.lon}&z=17&output=embed`;
+
         document.getElementById("previewPage").classList.remove("page-hidden");
       }
 
@@ -1315,6 +1318,13 @@
         const w = document.getElementById("warningText");
         const c = document.getElementById("behaviorCard");
         g.innerText = grade;
+        if (grade === "B") {
+          g.className = "text-5xl font-black my-2 text-red-600";
+          w.innerHTML = "⚠️ SUDAH SP1!<br>";
+          w.className = "text-[9px] font-bold text-red-500";
+          c.className =
+            "bg-red-50 p-5 rounded-[2.5rem] border border-red-200 flex flex-col justify-center items-center text-center";
+        }
         if (grade === "C") {
           g.className = "text-5xl font-black my-2 text-red-600";
           w.innerHTML = "⚠️ SUDAH SP2!<br>1 KESALAHAN LAGI BERHENTI";
@@ -1525,10 +1535,155 @@
         }
       }
 
+      let gpsWatchId = null;
+
+      function startGPSMonitor() {
+        if (gpsWatchId) return; // jangan buat 2 watcher
+
+        gpsWatchId = navigator.geolocation.watchPosition(
+          (position) => {
+            userLocation = {
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+            };
+
+            const accuracy = position.coords.accuracy;
+
+            if (accuracy <= 20) {
+              updateGPS(true, `Akurat (${Math.round(accuracy)}m)`);
+            } else if (accuracy <= 50) {
+              updateGPS(true, `Cukup (${Math.round(accuracy)}m)`);
+            } else {
+              updateGPS(true, `Lemah (${Math.round(accuracy)}m)`);
+            }
+          },
+          () => {
+            updateGPS(false, "Tidak aktif");
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000,
+          },
+        );
+      }
+
+      function updateGPS(active, text) {
+        const dot = document.getElementById("gpsDot");
+        const status = document.getElementById("gpsStatus");
+
+        status.innerText = text;
+
+        if (active) {
+          dot.classList.remove("bg-gray-400");
+          dot.classList.add("bg-green-500", "animate-pulse");
+        } else {
+          dot.classList.remove("bg-green-500", "animate-pulse");
+          dot.classList.add("bg-red-500");
+        }
+      }
+
+      function startNetworkMonitor() {
+        async function updateNetworkStatus() {
+          if (!navigator.onLine) {
+            updateNetwork(false, "Offline");
+            return;
+          }
+
+          const start = performance.now();
+
+          try {
+            await fetch("https://www.google.com/favicon.ico", {
+              mode: "no-cors",
+              cache: "no-store",
+            });
+
+            const ping = Math.round(performance.now() - start);
+
+            let quality = "Baik";
+            if (ping > 300) quality = "Lambat";
+            if (ping > 800) quality = "Sangat Lambat";
+
+            updateNetwork(true, `${quality} (${ping} ms)`);
+          } catch {
+            updateNetwork(false, "Gangguan");
+          }
+        }
+
+        updateNetworkStatus();
+        setInterval(updateNetworkStatus, 10000); // 🔥 tiap 10 detik
+      }
+
+      async function measurePing() {
+        const start = performance.now();
+
+        try {
+          await fetch("https://www.google.com/favicon.ico", {
+            mode: "no-cors",
+            cache: "no-store",
+          });
+
+          const end = performance.now();
+          const ping = Math.round(end - start);
+
+          let quality = "Baik";
+
+          if (ping > 300) quality = "Lambat";
+          if (ping > 800) quality = "Sangat Lambat";
+
+          updateNetwork(true, `${quality} (${ping} ms)`);
+        } catch {
+          updateNetwork(false, "Gangguan");
+        }
+      }
+
+      function updateNetwork(active, text) {
+        const dot = document.getElementById("netDot");
+        const status = document.getElementById("netStatus");
+
+        status.innerText = text;
+
+        if (active) {
+          dot.classList.remove("bg-gray-400");
+          dot.classList.add("bg-blue-500", "animate-pulse");
+        } else {
+          dot.classList.remove("bg-blue-500", "animate-pulse");
+          dot.classList.add("bg-red-500");
+        }
+      }
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("service-worker.js")
-          .then(() => console.log("Service Worker Registered"));
+        navigator.serviceWorker.register("/service-worker.js").then((reg) => {
+          // Jika ada update
+          reg.addEventListener("updatefound", () => {
+            const newWorker = reg.installing;
+
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
+                // 🔥 Ada versi baru
+                showUpdateModal(reg);
+              }
+            });
+          });
+        });
+
+        // Reload otomatis jika SW aktif
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          window.location.reload();
+        });
+      }
+
+      function showUpdateModal(registration) {
+        const modal = document.getElementById("updateModal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+
+        document.getElementById("updateBtn").onclick = () => {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        };
       }
     </script>
     <!-- MODAL SUKSES -->
@@ -1652,6 +1807,26 @@
           class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all"
         >
           Konfirmasi Absen
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== UPDATE MODAL ===== -->
+    <div
+      id="updateModal"
+      class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-2xl p-6 w-80 text-center animate-fadeIn">
+        <h2 class="text-lg font-bold mb-2">Versi Baru Tersedia 🚀</h2>
+        <p class="text-sm text-gray-500 mb-4">
+          Aplikasi telah diperbarui. Silakan refresh untuk menggunakan versi
+          terbaru.
+        </p>
+        <button
+          id="updateBtn"
+          class="bg-blue-600 text-white px-4 py-2 rounded-xl w-full"
+        >
+          Update Sekarang
         </button>
       </div>
     </div>
