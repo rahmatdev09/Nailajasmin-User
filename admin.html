@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - MBG System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -111,6 +112,13 @@
           <i class="fas fa-building mr-3"></i> Pengaturan Divisi
         </button>
         <button
+          onclick="showSection('logabsen')"
+          class="nav-item w-full flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+          id="btn-logabsen"
+        >
+          <i class="fas fa-clipboard-list mr-3"></i> Log Absen
+        </button>
+        <button
           onclick="showSection('koordinat')"
           class="nav-item w-full flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
           id="btn-koordinat"
@@ -143,7 +151,10 @@
         </div>
       </header>
 
-      <section id="content-area" class="p-8 overflow-y-auto">
+      <section
+        id="content-area"
+        class="p-6 md:p-8 pb-24 md:pb-8 overflow-y-auto"
+      >
         <div id="section-dashboard" class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div
@@ -194,9 +205,16 @@
             </button>
           </div>
           <div
-            class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm"
+            class="bg-white p-6 rounded-3xl overflow-hidden border border-gray-100 shadow-sm"
           >
-            <table class="w-full text-left">
+            <input
+              type="text"
+              id="searchUser"
+              placeholder="Cari karyawan..."
+              onkeyup="loadUsers()"
+              class="w-72 p-2 border rounded-xl text-sm"
+            />
+            <table class="w-full text-left mt-3">
               <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th class="p-4 text-xs font-bold text-gray-400 uppercase">
@@ -217,6 +235,8 @@
               </thead>
               <tbody id="userTableBody"></tbody>
             </table>
+
+            <div id="paginationUsers" class="flex gap-2 mt-4"></div>
           </div>
         </div>
 
@@ -294,6 +314,72 @@
             id="divisionGrid"
             class="grid grid-cols-1 md:grid-cols-2 gap-4"
           ></div>
+        </div>
+
+        <div id="section-logabsen" class="hidden space-y-4">
+          <input
+            type="text"
+            id="searchDiv"
+            placeholder="Cari divisi..."
+            onkeyup="loadDivisions()"
+            class="w-72 p-2 border rounded-xl text-sm"
+          />
+          <div class="flex justify-between items-center">
+            <h3 class="text-xl font-bold">Log Absensi Bulanan</h3>
+            <button
+              onclick="downloadExcel()"
+              class="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg"
+            >
+              <i class="fas fa-file-excel mr-2"></i> Download Excel
+            </button>
+          </div>
+
+          <div class="flex gap-3 items-end">
+            <div>
+              <label class="text-xs font-bold text-gray-500"
+                >Tanggal Mulai</label
+              >
+              <input
+                type="date"
+                id="filterStart"
+                class="p-2 border rounded-xl text-sm"
+              />
+            </div>
+            <button
+              onclick="loadLogAbsen()"
+              class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold"
+            >
+              Filter 2 Minggu
+            </button>
+          </div>
+          <div
+            class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm overflow-auto"
+          >
+            <table class="w-full text-sm">
+              <thead id="logHead"></thead>
+              <tbody id="logBody"></tbody>
+            </table>
+
+            <div id="logLoading" class="hidden text-center py-6">
+              <div
+                class="flex items-center justify-center gap-3 text-blue-600 font-semibold"
+              >
+                <svg class="spinner" viewBox="0 0 50 50">
+                  <circle
+                    class="path"
+                    cx="25"
+                    cy="25"
+                    r="20"
+                    fill="none"
+                    stroke-width="5"
+                  ></circle>
+                </svg>
+                Memuat data absensi...
+              </div>
+            </div>
+
+            <div id="paginationLog" class="flex gap-2 mt-4"></div>
+          </div>
         </div>
       </section>
     </main>
@@ -473,6 +559,63 @@
     </div>
 
     <div
+      id="attendanceModal"
+      class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[300] p-6"
+    >
+      <div
+        class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative flex flex-col max-h-[90vh]"
+      >
+        <!-- HEADER -->
+        <div class="flex justify-between items-center px-6 py-4 border-b">
+          <h3 class="text-xl font-bold text-gray-800">Detail Absensi</h3>
+          <button
+            onclick="closeModal('attendanceModal')"
+            class="text-gray-400 hover:text-red-500 text-xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- BODY (SCROLLABLE) -->
+        <div class="overflow-y-auto px-6 py-5 space-y-5">
+          <!-- FOTO -->
+          <div class="flex justify-center">
+            <img
+              id="attendancePhoto"
+              class="w-40 h-40 object-cover rounded-2xl shadow-md border"
+            />
+          </div>
+
+          <!-- DETAIL DATA -->
+          <div
+            id="attendanceDetailContent"
+            class="grid grid-cols-2 gap-4 text-sm"
+          ></div>
+
+          <!-- MAP -->
+          <div>
+            <h4 class="font-semibold mb-2 text-gray-700">Lokasi Absensi</h4>
+            <iframe
+              id="attendanceMap"
+              class="w-full h-56 rounded-2xl border shadow-sm"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="p-5 border-t">
+          <button
+            onclick="closeModal('attendanceModal')"
+            class="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-2xl font-semibold"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
       id="successModal"
       class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[200] p-4"
     >
@@ -489,7 +632,84 @@
       </div>
     </div>
 
-    <script>
+    <!-- MOBILE BOTTOM NAV -->
+    <div
+      class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[500]"
+    >
+      <div class="flex justify-around py-2 text-xs">
+        <button
+          onclick="
+            showSection('dashboard');
+            setActiveMobile(this);
+          "
+          class="mobile-nav flex flex-col items-center text-blue-600"
+        >
+          <i class="fas fa-chart-pie text-lg"></i>
+          <span>Dashboard</span>
+        </button>
+
+        <button
+          onclick="
+            showSection('users');
+            setActiveMobile(this);
+          "
+          class="mobile-nav flex flex-col items-center text-gray-500"
+        >
+          <i class="fas fa-users text-lg"></i>
+          <span>Karyawan</span>
+        </button>
+
+        <button
+          onclick="
+            showSection('logabsen');
+            setActiveMobile(this);
+          "
+          class="mobile-nav flex flex-col items-center text-gray-500"
+        >
+          <i class="fas fa-clipboard-list text-lg"></i>
+          <span>Log</span>
+        </button>
+
+        <button
+          onclick="
+            showSection('settings');
+            setActiveMobile(this);
+          "
+          class="mobile-nav flex flex-col items-center text-gray-500"
+        >
+          <i class="fas fa-building text-lg"></i>
+          <span>Divisi</span>
+        </button>
+
+        <button
+          onclick="
+            showSection('koordinat');
+            setActiveMobile(this);
+          "
+          class="mobile-nav flex flex-col items-center text-gray-500"
+        >
+          <i class="fas fa-map-marker-alt text-lg"></i>
+          <span>Lokasi</span>
+        </button>
+      </div>
+    </div>
+
+    <script type="module">
+      import {
+        collection,
+        doc,
+        getDoc,
+        getDocs,
+        addDoc,
+        updateDoc,
+        deleteDoc,
+        onSnapshot,
+      } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+      let logPage = 1;
+      const logPerPage = 5;
       const firebaseConfig = {
         apiKey: "AIzaSyAYIlOOvpsZEAmx8pNt08YhLjisyCAxHhY",
         authDomain: "puskesmas-keman-d25a6.firebaseapp.com",
@@ -498,9 +718,12 @@
         messagingSenderId: "340139650693",
         appId: "1:340139650693:web:2fb2474b0d923e14aa03ec",
       };
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
+      const app = initializeApp(firebaseConfig);
+      export const db = getFirestore(app);
       let map, marker, circle;
+
+      let currentPage = 1;
+      const perPage = 5;
 
       // --- UTILS ---
       function setBtnLoading(btnId, isLoading, originalText) {
@@ -520,6 +743,32 @@
         setTimeout(() => {
           modal.classList.replace("flex", "hidden");
         }, 1500);
+      }
+
+      function setActiveMobile(el) {
+        document.querySelectorAll(".mobile-nav").forEach((btn) => {
+          btn.classList.remove("text-blue-600");
+          btn.classList.add("text-gray-500");
+        });
+
+        el.classList.remove("text-gray-500");
+        el.classList.add("text-blue-600");
+      }
+
+      window.setActiveMobile = setActiveMobile;
+
+      // Sync mobile active
+      document.querySelectorAll(".mobile-nav").forEach((btn) => {
+        btn.classList.remove("text-blue-600");
+        btn.classList.add("text-gray-500");
+      });
+
+      const activeMobile = document.querySelector(
+        `.mobile-nav[onclick*="${section}"]`,
+      );
+      if (activeMobile) {
+        activeMobile.classList.remove("text-gray-500");
+        activeMobile.classList.add("text-blue-600");
       }
 
       // --- MAPS LOGIC ---
@@ -555,6 +804,34 @@
         } else {
           initMap();
         }
+      }
+
+      async function downloadExcel() {
+        const wb = XLSX.utils.book_new();
+        const usersSnap = await db.collection("users").get();
+
+        let data = [];
+
+        for (const user of usersSnap.docs) {
+          const row = { Nama: user.data().name };
+          const attSnap = await db
+            .collection("attendance")
+            .doc(user.id)
+            .collection("daily")
+            .get();
+
+          attSnap.forEach((d) => {
+            const tgl = new Date(d.data().date).toLocaleDateString("id-ID");
+            row[tgl] =
+              `${d.data().clockIn || "-"} | ${d.data().clockOut || "-"}`;
+          });
+
+          data.push(row);
+        }
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Absensi");
+        XLSX.writeFile(wb, "Rekap_Absensi.xlsx");
       }
 
       async function saveGlobalCoords() {
@@ -666,33 +943,70 @@
           }, 300);
         }
         if (section === "dashboard") loadStats();
+        if (section === "logabsen") loadLogAbsen();
       }
 
       function loadUsers() {
-        db.collection("users").onSnapshot((snap) => {
+        onSnapshot(collection(db, "users"), (snapshot) => {
           const tbody = document.getElementById("userTableBody");
-          tbody.innerHTML = "";
-          snap.forEach((doc) => {
-            const u = doc.data();
-            tbody.innerHTML += `
-                        <tr class="border-b border-gray-50">
-                            <td class="p-4 cursor-pointer" onclick="showUserDetail('${doc.id}', '${u.name}')">
-                                <p class="font-bold text-gray-800 underline decoration-gray-200">${u.name || "N/A"}</p>
-                                <p class="text-xs text-gray-400">ID: ${u.id || "-"}</p>
-                            </td>
-                            <td class="p-4 text-sm font-semibold text-blue-600">${u.divisi || "-"}</td>
-                            <td class="p-4 text-sm text-gray-500">${u.jabatan || "-"}</td>
-                            <td class="p-4 text-center">
-                                <button onclick="openUserModal('${doc.id}')" class="text-blue-400 mx-2"><i class="fas fa-edit"></i></button>
-                                <button onclick="deleteUser('${doc.id}')" class="text-red-400"><i class="fas fa-trash"></i></button>
-                            </td>
-                        </tr>`;
+          const keyword =
+            document.getElementById("searchUser")?.value?.toLowerCase() || "";
+
+          let data = [];
+
+          snapshot.forEach((docSnap) => {
+            const u = docSnap.data();
+
+            if (!u.name?.toLowerCase().includes(keyword)) return;
+
+            data.push({
+              docId: docSnap.id, // ✅ simpan docId asli
+              ...u,
+            });
           });
+
+          const totalPage = Math.ceil(data.length / perPage);
+          const start = (currentPage - 1) * perPage;
+          const paginated = data.slice(start, start + perPage);
+
+          tbody.innerHTML = "";
+
+          paginated.forEach((u, index) => {
+            tbody.innerHTML += `
+      <tr class="border-b">
+        <td class="p-4 font-bold">${u.name}</td>
+        <td class="p-4">${u.divisi}</td>
+        <td class="p-4">${u.jabatan}</td>
+        <td class="p-4 text-center">
+          <button onclick="openUserModal('${u.docId}')">
+            <i class="fas fa-edit text-blue-500"></i>
+          </button>
+        </td>
+      </tr>`;
+          });
+
+          renderPagination(totalPage);
         });
       }
+      function renderPagination(totalPage) {
+        const el = document.getElementById("paginationUsers");
+        el.innerHTML = "";
+        for (let i = 1; i <= totalPage; i++) {
+          el.innerHTML += `
+      <button onclick="goPage(${i})"
+        class="px-3 py-1 rounded-lg ${i === currentPage ? "bg-blue-600 text-white" : "bg-gray-100"}">
+        ${i}
+      </button>`;
+        }
+      }
 
+      function goPage(p) {
+        currentPage = p;
+        loadUsers();
+      }
       async function loadStats() {
-        const users = await db.collection("users").get();
+        const users = await getDocs(collection(db, "users"));
+
         document.getElementById("stat-total-users").innerText = users.size;
         document.getElementById("stat-present-today").innerText = "Online";
       }
@@ -700,46 +1014,77 @@
       async function syncGaji() {
         const divId = document.getElementById("userDivisi").value;
         const jab = document.getElementById("userJabatan").value;
+
         if (!divId) return;
-        const doc = await db.collection("divisi").doc(divId).get();
-        if (doc.exists) {
-          const d = doc.data();
-          const nominal = jab === "KOORDINATOR" ? d.gaji_koordinator : d.gaji;
-          document.getElementById("userGaji").value =
-            "Rp " + nominal.toLocaleString();
+
+        try {
+          const docRef = doc(db, "divisi", divId);
+          const snap = await getDoc(docRef);
+
+          if (snap.exists()) {
+            const d = snap.data();
+
+            const nominal = jab === "KOORDINATOR" ? d.gaji_koordinator : d.gaji;
+
+            document.getElementById("userGaji").value = nominal
+              ? "Rp " + nominal.toLocaleString("id-ID")
+              : "Rp 0";
+          }
+        } catch (err) {
+          console.error("Error sync gaji:", err);
         }
       }
 
       async function openUserModal(docId = null) {
-        const snap = await db.collection("divisi").get();
+        // ✅ Ambil daftar divisi (v9)
+        const divisiSnapshot = await getDocs(collection(db, "divisi"));
+
         const sel = document.getElementById("userDivisi");
         sel.innerHTML = '<option value="">Pilih Divisi</option>';
-        snap.forEach(
-          (d) => (sel.innerHTML += `<option value="${d.id}">${d.id}</option>`),
-        );
 
+        divisiSnapshot.forEach((d) => {
+          sel.innerHTML += `<option value="${d.id}">${d.id}</option>`;
+        });
+
+        // ==============================
+        // MODE EDIT
+        // ==============================
         if (docId) {
-          const doc = await db.collection("users").doc(docId).get();
-          const u = doc.data();
-          document.getElementById("editDocId").value = doc.id;
-          document.getElementById("userName").value = u.name;
-          document.getElementById("userIdField").value = u.id;
-          document.getElementById("userPhone").value = u.phone;
-          document.getElementById("userPass").value = u.password;
-          document.getElementById("userDivisi").value = u.divisi;
-          document.getElementById("userJabatan").value = u.jabatan;
-          syncGaji();
+          const docRef = doc(db, "users", docId);
+          const userSnap = await getDoc(docRef);
+
+          if (userSnap.exists()) {
+            const u = userSnap.data();
+
+            document.getElementById("editDocId").value = docId; // ✅ FIX
+            document.getElementById("userName").value = u.name || "";
+            document.getElementById("userIdField").value = u.id || "";
+            document.getElementById("userPhone").value = u.phone || "";
+            document.getElementById("userPass").value = u.password || "";
+            document.getElementById("userDivisi").value = u.divisi || "";
+            document.getElementById("userJabatan").value = u.jabatan || "";
+
+            syncGaji();
+          } else {
+            console.log("Dokumen tidak ditemukan");
+          }
         } else {
+          // ==============================
+          // MODE TAMBAH
+          // ==============================
           document.getElementById("editDocId").value = "";
-          ["userName", "userIdField", "userPhone", "userPass"].forEach(
-            (i) => (document.getElementById(i).value = ""),
-          );
+
+          ["userName", "userIdField", "userPhone", "userPass"].forEach((i) => {
+            document.getElementById(i).value = "";
+          });
         }
+
         openModal("userModal");
       }
 
       async function saveUser() {
         const docId = document.getElementById("editDocId").value;
+
         const data = {
           name: document.getElementById("userName").value,
           id: document.getElementById("userIdField").value,
@@ -751,52 +1096,232 @@
         };
 
         setBtnLoading("btn-save-user", true, "Simpan");
+
         try {
-          if (docId) await db.collection("users").doc(docId).update(data);
-          else await db.collection("users").add(data);
+          if (docId) {
+            // UPDATE
+            await updateDoc(doc(db, "users", docId), data);
+          } else {
+            // ADD
+            await addDoc(collection(db, "users"), data);
+          }
+
           closeModal("userModal");
           triggerSuccess();
         } catch (e) {
-          alert("Gagal");
+          console.error(e);
+          alert("Gagal menyimpan user");
         }
+
         setBtnLoading("btn-save-user", false, "Simpan");
       }
 
       async function loadDivisions() {
-        const snap = await db.collection("divisi").get();
+        const snapshot = await getDocs(collection(db, "divisi"));
+
         const grid = document.getElementById("divisionGrid");
+        const keyword =
+          document.getElementById("searchDiv")?.value?.toLowerCase() || "";
+
         grid.innerHTML = "";
-        snap.forEach((doc) => {
-          const d = doc.data();
+
+        snapshot.forEach((docSnap) => {
+          if (!docSnap.id.toLowerCase().includes(keyword)) return;
+
+          const d = docSnap.data();
+
           grid.innerHTML += `
-      <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-          <div class="flex justify-between items-center">
-              <h4 class="font-black text-blue-600 uppercase tracking-wide">${doc.id}</h4>
-              <button onclick="deleteDivision('${doc.id}')" class="text-red-300 hover:text-red-500 transition-all"><i class="fas fa-trash"></i></button>
+      <div class="bg-white p-6 rounded-3xl border shadow-sm space-y-3">
+        <div class="flex justify-between items-start">
+          <h4 class="font-bold text-blue-600 text-lg">${docSnap.id}</h4>
+          <div class="flex gap-2">
+            <button onclick="editDivision('${docSnap.id}')">
+              <i class="fas fa-edit text-blue-500"></i>
+            </button>
+            <button onclick="deleteDivision('${docSnap.id}')">
+              <i class="fas fa-trash text-red-400"></i>
+            </button>
           </div>
-          <div class="mt-4 grid grid-cols-2 gap-4">
-              <div>
-                  <p class="text-[10px] text-gray-400 font-bold uppercase">Anggota</p>
-                  <p class="text-sm font-bold text-gray-700">Rp ${d.gaji.toLocaleString()}</p>
-              </div>
-              <div>
-                  <p class="text-[10px] text-gray-400 font-bold uppercase">Koordinator</p>
-                  <p class="text-sm font-bold text-blue-600">Rp ${d.gaji_koordinator.toLocaleString()}</p>
-              </div>
-          </div>
-          <div class="mt-3 pt-3 border-t border-dashed flex justify-between">
-              <div>
-                  <p class="text-[10px] text-gray-400 font-bold uppercase">Jam Masuk</p>
-                  <p class="text-xs font-bold text-gray-600">${d.jam_masuk || "--:--"}</p>
-              </div>
-              <div class="text-right">
-                  <p class="text-[10px] text-gray-400 font-bold uppercase">Jam Keluar</p>
-                  <p class="text-xs font-bold text-gray-600">${d.jam_keluar || "--:--"}</p>
-              </div>
-          </div>
+        </div>
+
+        <div class="text-sm text-gray-600 space-y-1">
+          <p><span class="font-semibold">Gaji Anggota:</span> Rp ${d.gaji?.toLocaleString("id-ID")}</p>
+          <p><span class="font-semibold">Gaji Koordinator:</span> Rp ${d.gaji_koordinator?.toLocaleString("id-ID")}</p>
+        </div>
+
+        <div class="flex justify-between text-xs text-gray-500 pt-2 border-t">
+          <span><strong>Jam Masuk:</strong> ${d.jam_masuk}</span>
+          <span><strong>Jam Keluar:</strong> ${d.jam_keluar}</span>
+        </div>
       </div>`;
         });
       }
+
+      async function editDivision(id) {
+        const snap = await getDoc(doc(db, "divisi", id));
+
+        if (!snap.exists()) {
+          alert("Divisi tidak ditemukan");
+          return;
+        }
+
+        const d = snap.data();
+
+        document.getElementById("addDivName").value = id;
+        document.getElementById("addDivGajiAnggota").value = d.gaji;
+        document.getElementById("addDivGajiKoor").value = d.gaji_koordinator;
+        document.getElementById("addDivJamMasuk").value = d.jam_masuk;
+        document.getElementById("addDivJamKeluar").value = d.jam_keluar;
+
+        openModal("addDivModal");
+      }
+
+      async function loadLogAbsen() {
+        const startInput = document.getElementById("filterStart").value;
+        if (!startInput) return alert("Pilih tanggal mulai terlebih dahulu!");
+
+        document.getElementById("logLoading").classList.remove("hidden");
+        document.getElementById("logBody").innerHTML = "";
+
+        const startDate = new Date(startInput);
+        const dates = [];
+
+        // Generate 14 hari
+        for (let i = 0; i < 14; i++) {
+          const d = new Date(startDate);
+          d.setDate(startDate.getDate() + i);
+          dates.push(new Date(d));
+        }
+
+        // ===== Render Header =====
+        const logHead = document.getElementById("logHead");
+        logHead.innerHTML = `
+    <tr class="bg-gray-50 text-xs uppercase text-gray-500">
+      <th class="p-3 text-center">No</th>
+      <th class="p-3 text-left">Nama</th>
+      <th class="p-3 text-left">Divisi</th>
+      ${dates
+        .map(
+          (d) => `
+        <th class="p-3 text-center border-l border-r border-gray-200">
+          ${d.toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+        </th>`,
+        )
+        .join("")}
+    </tr>
+  `;
+
+        // ===== Ambil Semua User =====
+        const usersSnap = await getDocs(collection(db, "users"));
+        let data = [];
+
+        for (const userDoc of usersSnap.docs) {
+          const userData = userDoc.data();
+
+          // ===== Ambil Subcollection attendance/{userId}/daily =====
+          const attSnap = await getDocs(
+            collection(db, "attendance", userDoc.id, "daily"),
+          );
+
+          let attendanceMap = {};
+
+          attSnap.forEach((attDoc) => {
+            const d = attDoc.data();
+            const attDate = new Date(d.date);
+
+            dates.forEach((date) => {
+              if (attDate.toDateString() === date.toDateString()) {
+                attendanceMap[date.toDateString()] = {
+                  in: d.clockIn || "--:--",
+                  out: d.clockOut || "--:--",
+                };
+              }
+            });
+          });
+
+          data.push({
+            userId: userDoc.id,
+            name: userData.name,
+            divisi: userData.divisi,
+            attendance: attendanceMap,
+          });
+        }
+
+        // Sort by divisi
+        data.sort((a, b) => a.divisi.localeCompare(b.divisi));
+
+        // Render pagination
+        renderLogPagination(data, dates);
+
+        document.getElementById("logLoading").classList.add("hidden");
+      }
+
+      function renderLogPagination(data, dates) {
+        const totalPage = Math.ceil(data.length / logPerPage);
+        const start = (logPage - 1) * logPerPage;
+        const paginated = data.slice(start, start + logPerPage);
+
+        const logBody = document.getElementById("logBody");
+        logBody.innerHTML = "";
+
+        paginated.forEach((u, index) => {
+          logBody.innerHTML += `
+      <tr class="border-b text-sm">
+        <td class="p-3 text-center font-bold">${start + index + 1}</td>
+        <td class="p-3 font-semibold whitespace-nowrap">${u.name}</td>
+        <td class="p-3 whitespace-nowrap">${u.divisi}</td>
+
+        ${dates
+          .map((d) => {
+            const att = u.attendance[d.toDateString()];
+
+            // ISO DATE FIX (timezone safe)
+            const isoDate =
+              d.getFullYear() +
+              "-" +
+              String(d.getMonth() + 1).padStart(2, "0") +
+              "-" +
+              String(d.getDate()).padStart(2, "0");
+
+            if (!att) {
+              return `
+              <td class="p-2 text-center border-l border-r border-gray-200">
+                <span class="text-gray-300 text-xs">-</span>
+              </td>`;
+            }
+
+            return `
+            <td class="p-2 border-l border-r border-gray-200 cursor-pointer hover:bg-blue-50"
+                onclick="openAttendanceDetail('${u.userId}', '${isoDate}')">
+              <div class="flex flex-col items-center text-xs leading-tight">
+                <span class="text-green-600 font-semibold">
+                  IN: ${att.in}
+                </span>
+                <span class="text-blue-600 font-semibold">
+                  OUT: ${att.out}
+                </span>
+              </div>
+            </td>`;
+          })
+          .join("")}
+      </tr>
+    `;
+        });
+
+        const pag = document.getElementById("paginationLog");
+        pag.innerHTML = "";
+
+        for (let i = 1; i <= totalPage; i++) {
+          pag.innerHTML += `
+      <button onclick="goLogPage(${i})"
+        class="px-3 py-1 rounded-lg ${
+          i === logPage ? "bg-blue-600 text-white" : "bg-gray-100"
+        }">
+        ${i}
+      </button>`;
+        }
+      }
+
       async function saveDivision() {
         const name = document
           .getElementById("addDivName")
@@ -847,6 +1372,111 @@
         loadStats();
         showSection("dashboard");
       };
+
+      async function openAttendanceDetail(userId, date) {
+        const modal = document.getElementById("attendanceModal");
+        const content = document.getElementById("attendanceDetailContent");
+        const photo = document.getElementById("attendancePhoto");
+        const map = document.getElementById("attendanceMap");
+
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+
+        console.log("USER ID:", userId);
+        console.log("DATE PARAM:", date);
+
+        const docRef = doc(db, "attendance", userId, "daily", date);
+        const snap = await getDoc(docRef);
+
+        if (!snap.exists()) {
+          content.innerHTML = "Data tidak ditemukan";
+          return;
+        }
+
+        const data = snap.data();
+
+        // ===== FOTO =====
+        photo.src = data.photoIn || "";
+        photo.onerror = () => (photo.src = "https://via.placeholder.com/150");
+
+        // ===== TIMESTAMP SAFE =====
+        let formattedTime = "-";
+        if (data.timestamp && typeof data.timestamp.toDate === "function") {
+          formattedTime = data.timestamp.toDate().toLocaleString("id-ID");
+        }
+
+        // ===== DETAIL =====
+        content.innerHTML = `
+    <div>
+      <div class="text-gray-500">Tanggal</div>
+      <div class="font-semibold">${data.date || "-"}</div>
+    </div>
+
+    <div>
+      <div class="text-gray-500">Jam Masuk</div>
+      <div class="font-semibold ${
+        isLate(data.clockIn) ? "text-red-600" : ""
+      }">${data.clockIn || "-"}</div>
+    </div>
+
+    <div>
+      <div class="text-gray-500">Jam Keluar</div>
+      <div class="font-semibold">${data.clockOut || "-"}</div>
+    </div>
+
+    <div>
+      <div class="text-gray-500">Latitude</div>
+      <div class="font-semibold">${data.lat || "-"}</div>
+    </div>
+
+    <div>
+      <div class="text-gray-500">Longitude</div>
+      <div class="font-semibold">${data.lon || "-"}</div>
+    </div>
+
+    <div>
+      <div class="text-gray-500">Timestamp</div>
+      <div class="font-semibold">${formattedTime}</div>
+    </div>
+  `;
+
+        // ===== MAP =====
+        if (data.lat && data.lon) {
+          map.src = `https://www.google.com/maps?q=${data.lat},${data.lon}&z=16&output=embed`;
+          map.classList.remove("hidden");
+        } else {
+          map.classList.add("hidden");
+        }
+      }
+      // cek jika telat
+      function isLate(clockIn) {
+        if (!clockIn) return false;
+
+        const [hour, minute] = clockIn.split(":").map(Number);
+        const totalMinutes = hour * 60 + minute;
+
+        const limit = 7 * 60 + 30; // 07:30
+        return totalMinutes > limit;
+      }
+
+      function goLogPage(p) {
+        logPage = p;
+        loadLogAbsen();
+      }
+
+      window.showSection = showSection;
+      window.goLogPage = goLogPage;
+      window.loadLogAbsen = loadLogAbsen;
+
+      window.openAttendanceDetail = openAttendanceDetail;
+      window.loadUsers = loadUsers;
+      window.openUserModal = openUserModal;
+      window.closeModal = closeModal;
+      window.saveUser = saveUser;
+      window.editDivision = editDivision;
+      window.deleteDivision = deleteDivision;
+      window.goPage = goPage;
+      window.openModal = openModal;
     </script>
   </body>
 </html>
