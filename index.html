@@ -193,6 +193,14 @@
       </nav>
 
       <main class="p-4 space-y-5">
+        <div class="bg-white rounded-2xl shadow-md p-4 mb-4 space-y-3">
+          <p
+            id="serverDateTime"
+            class="text-[10px] text-gray-400 font-semibold"
+          >
+            Memuat waktu...
+          </p>
+        </div>
         <!-- ===== STATUS SYSTEM BAR ===== -->
         <div class="bg-white rounded-2xl shadow-md p-4 mb-4 space-y-3">
           <!-- GPS -->
@@ -710,7 +718,7 @@
         }
       };
 
-      function pindahKe(pageId) {
+      async function pindahKe(pageId) {
         const pages = [
           "loginPage",
           "dashboardPage",
@@ -740,6 +748,10 @@
           nav.classList.add("flex");
         }
 
+        if (pageId === "dashboardPage") {
+          loadServerTime();
+        }
+
         // 🔥 LOAD RIWAYAT HANYA SAAT DIBUTUHKAN
         if (pageId === "riwayatPage") {
           if (currentUserUID) {
@@ -751,6 +763,15 @@
         }
 
         if (pageId === "scanPage") {
+          const sudahAbsen = await cekSudahAbsenHariIni();
+
+          if (sudahAbsen) {
+            document
+              .getElementById("sudahAbsenModal")
+              .classList.remove("hidden");
+            return;
+          }
+
           const camOk = localStorage.getItem("camera_granted");
           const locOk = localStorage.getItem("location_granted");
 
@@ -767,9 +788,6 @@
               .getElementById("permissionModal")
               .classList.remove("hidden");
           }
-        } else {
-          stopCamera();
-          stopLocation();
         }
 
         document.getElementById("nav-home").className =
@@ -799,6 +817,96 @@
           document.getElementById(navItems[pageId]).className =
             "text-blue-600 flex flex-col items-center";
         }
+      }
+
+      let serverBaseTime = null;
+      let localBaseTime = null;
+      let serverClockInterval = null;
+
+      async function cekSudahAbsenHariIni() {
+        if (!currentUserUID) return false;
+
+        try {
+          // Ambil waktu server dulu
+          const tempRef = await db.collection("server_time").add({
+            time: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+
+          const snap = await tempRef.get();
+          const serverTime = snap.data().time.toDate();
+
+          const formatterDate = new Intl.DateTimeFormat("id-ID", {
+            timeZone: "Asia/Jakarta",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          });
+
+          const parts = formatterDate.formatToParts(serverTime);
+          const year = parts.find((p) => p.type === "year").value;
+          const month = parts.find((p) => p.type === "month").value;
+          const day = parts.find((p) => p.type === "day").value;
+
+          const today = `${year}-${month}-${day}`;
+
+          const doc = await db
+            .collection("attendance")
+            .doc(currentUserUID)
+            .collection("daily")
+            .doc(today)
+            .get();
+
+          if (doc.exists && doc.data().clockOut) {
+            return true; // Sudah absen pulang
+          }
+
+          return false;
+        } catch (e) {
+          console.error(e);
+          return false;
+        }
+      }
+      async function loadServerTime() {
+        try {
+          const ref = await db.collection("server_time").add({
+            time: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+
+          const snap = await ref.get();
+          serverBaseTime = snap.data().time.toDate();
+          localBaseTime = new Date();
+
+          startLiveClock();
+        } catch (err) {
+          document.getElementById("serverDateTime").innerText =
+            "Gagal memuat waktu";
+        }
+      }
+
+      function startLiveClock() {
+        if (serverClockInterval) clearInterval(serverClockInterval);
+
+        serverClockInterval = setInterval(() => {
+          if (!serverBaseTime) return;
+
+          const nowLocal = new Date();
+          const diff = nowLocal - localBaseTime;
+
+          const currentServerTime = new Date(serverBaseTime.getTime() + diff);
+
+          const formatted = currentServerTime.toLocaleString("id-ID", {
+            timeZone: "Asia/Jakarta",
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+
+          document.getElementById("serverDateTime").innerText = formatted;
+        }, 1000);
       }
 
       async function requestAllPermissions() {
@@ -1179,33 +1287,93 @@
 
       async function konfirmasiAbsen() {
         showLoading("Mengirim absensi...");
-        // if (!userLocation || !userLocation.accuracy) {
-        //   alert("Lokasi tidak valid.");
-        //   return;
-        // }
 
-        console.log(userLocation.accuracy);
         if (userLocation.accuracy > 200) {
           alert("Akurasi GPS buruk. Coba lagi.");
+          hideLoading();
           return;
         }
-        if (!previewData) return;
 
-        const today = new Date().toISOString().split("T")[0];
+        if (!previewData) {
+          hideLoading();
+          return;
+        }
 
         try {
-          const attRef = db
+          // 🔥 Ambil waktu server
+          const tempRef = await db.collection("server_time").add({
+            time: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+
+          const snap = await tempRef.get();
+          const serverTime = snap.data().time.toDate();
+
+          // Format tanggal & jam Asia/Jakarta
+          const formatterDate = new Intl.DateTimeFormat("id-ID", {
+            timeZone: "Asia/Jakarta",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          });
+
+          const formatterTime = new Intl.DateTimeFormat("id-ID", {
+            timeZone: "Asia/Jakarta",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+
+          const parts = formatterDate.formatToParts(serverTime);
+          const year = parts.find((p) => p.type === "year").value;
+          const month = parts.find((p) => p.type === "month").value;
+          const day = parts.find((p) => p.type === "day").value;
+
+          const today = `${year}-${month}-${day}`;
+          const timeNow = formatterTime.format(serverTime);
+
+          const attCollection = db
             .collection("attendance")
             .doc(currentUserUID)
-            .collection("daily")
-            .doc(today);
+            .collection("daily");
 
-          const doc = await attRef.get();
+          const todayRef = attCollection.doc(today);
+          const todayDoc = await todayRef.get();
 
-          if (!doc.exists || !doc.data().clockIn) {
-            await attRef.set({
+          // ================================
+          // 1️⃣ CEK ADA SHIFT MALAM KEMARIN?
+          // ================================
+          const yesterdayDate = new Date(serverTime);
+          yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+
+          const yParts = formatterDate.formatToParts(yesterdayDate);
+          const yYear = yParts.find((p) => p.type === "year").value;
+          const yMonth = yParts.find((p) => p.type === "month").value;
+          const yDay = yParts.find((p) => p.type === "day").value;
+
+          const yesterday = `${yYear}-${yMonth}-${yDay}`;
+          const yesterdayRef = attCollection.doc(yesterday);
+          const yesterdayDoc = await yesterdayRef.get();
+
+          // 🔥 Jika kemarin ada clockIn tapi belum clockOut
+          if (
+            yesterdayDoc.exists &&
+            yesterdayDoc.data().clockIn &&
+            !yesterdayDoc.data().clockOut
+          ) {
+            await yesterdayRef.update({
+              clockOut: timeNow,
+              photoOut: previewData.photo,
+              last_lat: previewData.lat,
+              last_lon: previewData.lon,
+              status: previewData.status,
+            });
+          } else if (!todayDoc.exists) {
+            // ================================
+            // 2️⃣ ABSEN MASUK BARU
+            // ================================
+            await todayRef.set({
               date: today,
-              clockIn: previewData.time,
+              clockIn: timeNow,
               photoIn: previewData.photo,
               lat: previewData.lat,
               lon: previewData.lon,
@@ -1219,23 +1387,27 @@
                 presence_count: firebase.firestore.FieldValue.increment(1),
               });
           } else {
-            await attRef.update({
-              clockOut: previewData.time,
+            // ================================
+            // 3️⃣ ABSEN PULANG NORMAL
+            // ================================
+            await todayRef.update({
+              clockOut: timeNow,
               photoOut: previewData.photo,
               last_lat: previewData.lat,
               last_lon: previewData.lon,
               status: previewData.status,
             });
           }
+
           hideLoading();
           document.getElementById("previewPage").classList.add("page-hidden");
           document.getElementById("successModal").classList.remove("hidden");
           pindahKe("dashboardPage");
         } catch (e) {
+          hideLoading();
           alert("Gagal: " + e.message);
         }
       }
-
       function tutupPreview() {
         document.getElementById("previewPage").classList.add("page-hidden");
       }
@@ -1384,10 +1556,10 @@
 
         const list = document.getElementById("listRiwayat");
         list.innerHTML = `
-    <div class="text-center text-gray-400 py-6">
-      Loading...
-    </div>
-  `;
+          <div class="text-center text-gray-400 py-6">
+            Loading...
+          </div>
+        `;
 
         let hadir = 0;
         let toleransi = 0;
@@ -1405,10 +1577,10 @@
 
           if (snapshot.empty) {
             list.innerHTML = `
-        <div class="text-center text-gray-400 py-6">
-          Belum ada riwayat presensi
-        </div>
-      `;
+              <div class="text-center text-gray-400 py-6">
+                Belum ada riwayat presensi
+              </div>
+            `;
             return;
           }
 
@@ -1444,19 +1616,19 @@
             }
 
             list.innerHTML += `
-        <div class="bg-white rounded-2xl p-4 shadow opacity-0 translate-y-3 transition-all duration-500">
-          <div class="flex justify-between items-center mb-2">
-            <p class="font-semibold">${data.date}</p>
-            <span class="px-3 py-1 text-xs font-bold rounded-full ${warna}">
-              ${status}
-            </span>
-          </div>
-          <div class="text-sm text-gray-500 flex justify-between">
-            <span>Masuk: ${data.clockIn || "-"}</span>
-            <span>Pulang: ${data.clockOut || "-"}</span>
-          </div>
-        </div>
-      `;
+              <div class="bg-white rounded-2xl p-4 shadow opacity-0 translate-y-3 transition-all duration-500">
+                <div class="flex justify-between items-center mb-2">
+                  <p class="font-semibold">${data.date}</p>
+                  <span class="px-3 py-1 text-xs font-bold rounded-full ${warna}">
+                    ${status}
+                  </span>
+                </div>
+                <div class="text-sm text-gray-500 flex justify-between">
+                  <span>Masuk: ${data.clockIn || "-"}</span>
+                  <span>Pulang: ${data.clockOut || "-"}</span>
+                </div>
+              </div>
+            `;
           });
 
           // =============================
@@ -1510,10 +1682,10 @@
         } catch (e) {
           console.log(e);
           list.innerHTML = `
-      <div class="text-center text-red-400 py-6">
-        Gagal memuat data
-      </div>
-    `;
+            <div class="text-center text-red-400 py-6">
+              Gagal memuat data
+            </div>
+          `;
         }
       }
 
@@ -1597,6 +1769,11 @@
           dot.classList.remove("bg-green-500", "animate-pulse");
           dot.classList.add("bg-red-500");
         }
+      }
+
+      function tutupSudahAbsenModal() {
+        document.getElementById("sudahAbsenModal").classList.add("hidden");
+        pindahKe("dashboardPage");
       }
 
       function startNetworkMonitor() {
@@ -1855,6 +2032,24 @@
           class="bg-blue-600 text-white px-4 py-2 rounded-xl w-full"
         >
           Update Sekarang
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="sudahAbsenModal"
+      class="hidden flex fixed inset-0 bg-black/50 z-50 items-center justify-center"
+    >
+      <div class="bg-white rounded-2xl p-6 w-80 text-center shadow-xl">
+        <h3 class="font-bold text-lg text-gray-800 mb-2">Sudah Absen</h3>
+        <p class="text-sm text-gray-500 mb-4">
+          Anda sudah melakukan absen masuk dan pulang hari ini.
+        </p>
+        <button
+          onclick="tutupSudahAbsenModal()"
+          class="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold"
+        >
+          OK
         </button>
       </div>
     </div>
