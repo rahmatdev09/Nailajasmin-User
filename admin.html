@@ -757,19 +757,19 @@
 
       window.setActiveMobile = setActiveMobile;
 
-      // Sync mobile active
-      document.querySelectorAll(".mobile-nav").forEach((btn) => {
-        btn.classList.remove("text-blue-600");
-        btn.classList.add("text-gray-500");
-      });
+      // // Sync mobile active
+      // document.querySelectorAll(".mobile-nav").forEach((btn) => {
+      //   btn.classList.remove("text-blue-600");
+      //   btn.classList.add("text-gray-500");
+      // });
 
-      const activeMobile = document.querySelector(
-        `.mobile-nav[onclick*="${section}"]`,
-      );
-      if (activeMobile) {
-        activeMobile.classList.remove("text-gray-500");
-        activeMobile.classList.add("text-blue-600");
-      }
+      // const activeMobile = document.querySelector(
+      //   `.mobile-nav[onclick*="${section}"]`,
+      // );
+      // if (activeMobile) {
+      //   activeMobile.classList.remove("text-gray-500");
+      //   activeMobile.classList.add("text-blue-600");
+      // }
 
       // --- MAPS LOGIC ---
       function initMap(lat = -6.2, lon = 106.81, radius = 0.1) {
@@ -1480,3 +1480,4 @@
     </script>
   </body>
 </html>
+
