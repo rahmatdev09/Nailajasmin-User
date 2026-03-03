@@ -464,6 +464,12 @@
           class="bg-blue-100 text-blue-600 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
           >--</span
         >
+        <p
+          id="appVersionText"
+          class="text-[10px] text-gray-300 mt-3 tracking-widest"
+        >
+          Version --
+        </p>
       </div>
       <div class="space-y-4 mb-6">
         <p
@@ -519,6 +525,12 @@
           </button>
         </div>
       </div>
+      <button
+        id="updateAppBtn"
+        class="hidden w-full my-4 p-4 bg-green-600 text-white font-bold rounded-2xl shadow-md active:scale-95 transition-all"
+      >
+        Update Aplikasi
+      </button>
       <button
         onclick="handleLogout()"
         class="w-full p-5 bg-red-50 text-red-600 font-bold rounded-2xl border border-red-100 active:bg-red-100 transition-all"
@@ -672,6 +684,39 @@
         <span class="text-[9px] font-bold mt-1 uppercase">Profil</span>
       </button>
     </div>
+
+    <div
+      id="updatePopup"
+      class="hidden fixed inset-0 bg-black/50 z-[999] flex items-center justify-center"
+    >
+      <div class="bg-white w-80 rounded-3xl p-6 shadow-2xl text-center">
+        <h3 class="text-lg font-bold text-gray-800 mb-2">
+          Versi Baru Tersedia 🚀
+        </h3>
+
+        <p class="text-sm text-gray-500 mb-5">
+          Aplikasi perlu diperbarui untuk mendapatkan fitur terbaru dan
+          perbaikan bug.
+        </p>
+
+        <div class="flex gap-3">
+          <!-- <button
+            onclick="tutupUpdatePopup()"
+            class="flex-1 py-2 rounded-xl bg-gray-100 font-semibold text-gray-600"
+          >
+            Nanti
+          </button> -->
+
+          <button
+            onclick="updatePWAApp()"
+            class="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold shadow-md"
+          >
+            Update
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script>
       // --- FIREBASE CONFIGURATION ---
       const firebaseConfig = {
@@ -693,6 +738,71 @@
       let map, userMarker, officeCircle;
       let watchId = null;
       let previewData = null;
+
+      function tampilkanVersiAplikasi() {
+        const versi = localStorage.getItem("app_version") || "1";
+        const el = document.getElementById("appVersionText");
+        if (el) {
+          el.textContent = "Versi: v" + versi;
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        cekVersiAplikasi();
+      });
+
+      window.cekVersiAplikasi = async function () {
+        try {
+          const doc = await db.collection("app_config").doc("version").get();
+
+          if (!doc.exists) return;
+
+          const serverVersion = doc.data().current_version;
+          const localVersion = parseInt(
+            localStorage.getItem("app_version") || "1",
+          );
+
+          console.log("Server:", serverVersion);
+          console.log("Local:", localVersion);
+
+          if (localVersion < serverVersion) {
+            document.getElementById("updatePopup").classList.remove("hidden");
+          }
+        } catch (e) {
+          console.error("Cek versi gagal:", e);
+        }
+      };
+
+      window.updatePWAApp = async function () {
+        console.log("Adas");
+        if (!confirm("Update aplikasi sekarang?")) return;
+
+        try {
+          showLoading("Memperbarui aplikasi...");
+
+          // Hapus semua cache
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            for (let key of keys) {
+              await caches.delete(key);
+            }
+          }
+
+          // Update versi lokal sesuai server
+          const doc = await db.collection("app_config").doc("version").get();
+
+          if (doc.exists) {
+            localStorage.setItem("app_version", doc.data().current_version);
+          }
+
+          hideLoading();
+
+          // Reload paksa
+          window.location.reload(true);
+        } catch (e) {
+          alert("Update gagal: " + e.message);
+        }
+      };
 
       window.onload = () => {
         // Cek Ingat Saya
@@ -790,6 +900,10 @@
           }
         }
 
+        document
+          .getElementById("updateAppBtn")
+          .addEventListener("click", updatePWAApp);
+
         document.getElementById("nav-home").className =
           pageId === "dashboardPage"
             ? "text-blue-600 flex flex-col items-center"
@@ -800,6 +914,10 @@
             ? "text-blue-600 flex flex-col items-center"
             : "text-gray-400 flex flex-col items-center";
 
+        if (pageId === "profilePage") {
+          cekVersiAplikasi();
+          tampilkanVersiAplikasi();
+        }
         const navItems = {
           dashboardPage: "nav-home",
           riwayatPage: "nav-riwayat",
