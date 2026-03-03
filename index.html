@@ -1134,15 +1134,17 @@
         }
       }
 
-      function loadUserData(uid) {
+      async function loadUserData(uid) {
         db.collection("users")
           .doc(uid)
-          .onSnapshot((doc) => {
+          .onSnapshot(async (doc) => {
             if (doc.exists) {
               userData = doc.data();
               updateUI(userData);
               loadDivisionShift(userData.divisi);
-              initDashboardChart(userData.presence_count || 0);
+              const hariHadir = await hitungHadirDariAttendance();
+              initDashboardChart(hariHadir || 0);
+
               checkTodayAttendance(uid);
             } else {
               handleLogout();
@@ -1586,6 +1588,7 @@
 
       let presenceChart;
       function initDashboardChart(hariHadir) {
+        console.log(hariHadir);
         const totalPeriode = 12;
         const persen = Math.min(
           Math.round((hariHadir / totalPeriode) * 100),
@@ -1613,6 +1616,33 @@
         });
       }
 
+      async function hitungHadirDariAttendance() {
+        if (!currentUserUID) return 0;
+
+        try {
+          const snapshot = await db
+            .collection("attendance")
+            .doc(currentUserUID)
+            .collection("daily")
+            .get();
+
+          let totalHadir = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.clockIn) {
+              totalHadir++;
+            }
+          });
+
+          console.log(totalHadir);
+
+          return totalHadir;
+        } catch (e) {
+          console.error("Gagal hitung attendance:", e);
+          return 0;
+        }
+      }
       function setPerilaku(grade) {
         const g = document.getElementById("behaviorGrade");
         const w = document.getElementById("warningText");
@@ -1674,10 +1704,10 @@
 
         const list = document.getElementById("listRiwayat");
         list.innerHTML = `
-          <div class="text-center text-gray-400 py-6">
-            Loading...
-          </div>
-        `;
+              <div class="text-center text-gray-400 py-6">
+                Loading...
+              </div>
+            `;
 
         let hadir = 0;
         let toleransi = 0;
@@ -1695,10 +1725,10 @@
 
           if (snapshot.empty) {
             list.innerHTML = `
-              <div class="text-center text-gray-400 py-6">
-                Belum ada riwayat presensi
-              </div>
-            `;
+                  <div class="text-center text-gray-400 py-6">
+                    Belum ada riwayat presensi
+                  </div>
+                `;
             return;
           }
 
@@ -1734,19 +1764,19 @@
             }
 
             list.innerHTML += `
-              <div class="bg-white rounded-2xl p-4 shadow opacity-0 translate-y-3 transition-all duration-500">
-                <div class="flex justify-between items-center mb-2">
-                  <p class="font-semibold">${data.date}</p>
-                  <span class="px-3 py-1 text-xs font-bold rounded-full ${warna}">
-                    ${status}
-                  </span>
-                </div>
-                <div class="text-sm text-gray-500 flex justify-between">
-                  <span>Masuk: ${data.clockIn || "-"}</span>
-                  <span>Pulang: ${data.clockOut || "-"}</span>
-                </div>
-              </div>
-            `;
+                  <div class="bg-white rounded-2xl p-4 shadow opacity-0 translate-y-3 transition-all duration-500">
+                    <div class="flex justify-between items-center mb-2">
+                      <p class="font-semibold">${data.date}</p>
+                      <span class="px-3 py-1 text-xs font-bold rounded-full ${warna}">
+                        ${status}
+                      </span>
+                    </div>
+                    <div class="text-sm text-gray-500 flex justify-between">
+                      <span>Masuk: ${data.clockIn || "-"}</span>
+                      <span>Pulang: ${data.clockOut || "-"}</span>
+                    </div>
+                  </div>
+                `;
           });
 
           // =============================
@@ -1800,10 +1830,10 @@
         } catch (e) {
           console.log(e);
           list.innerHTML = `
-            <div class="text-center text-red-400 py-6">
-              Gagal memuat data
-            </div>
-          `;
+                <div class="text-center text-red-400 py-6">
+                  Gagal memuat data
+                </div>
+              `;
         }
       }
 
