@@ -808,7 +808,7 @@
 
       async function downloadExcel() {
         const wb = XLSX.utils.book_new();
-        const usersSnap = await db.collection("users").get();
+        const usersSnap = await getDocs(collection(db, "users"))
 
         let data = [];
 
@@ -1481,5 +1481,6 @@
     </script>
   </body>
 </html>
+
 
 
