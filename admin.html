@@ -806,33 +806,34 @@
         }
       }
 
-      async function downloadExcel() {
-        const wb = XLSX.utils.book_new();
-        const usersSnap = await getDocs(collection(db, "users"))
+  async function downloadExcel() {
+  const wb = XLSX.utils.book_new();
 
-        let data = [];
+  const usersSnap = await getDocs(collection(db, "users"));
 
-        for (const user of usersSnap.docs) {
-          const row = { Nama: user.data().name };
-          const attSnap = await db
-            .collection("attendance")
-            .doc(user.id)
-            .collection("daily")
-            .get();
+  let data = [];
 
-          attSnap.forEach((d) => {
-            const tgl = new Date(d.data().date).toLocaleDateString("id-ID");
-            row[tgl] =
-              `${d.data().clockIn || "-"} | ${d.data().clockOut || "-"}`;
-          });
+  for (const user of usersSnap.docs) {
+    const row = { Nama: user.data().name };
 
-          data.push(row);
-        }
+    const attSnap = await getDocs(
+      collection(db, "attendance", user.id, "daily")
+    );
 
-        const ws = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, "Absensi");
-        XLSX.writeFile(wb, "Rekap_Absensi.xlsx");
-      }
+    attSnap.forEach((d) => {
+      const tgl = new Date(d.data().date).toLocaleDateString("id-ID");
+
+      row[tgl] =
+        `${d.data().clockIn || "-"} | ${d.data().clockOut || "-"}`;
+    });
+
+    data.push(row);
+  }
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, "Absensi");
+  XLSX.writeFile(wb, "Rekap_Absensi.xlsx");
+}
 
       async function saveGlobalCoords() {
         const lat = parseFloat(document.getElementById("input-lat").value);
@@ -1481,6 +1482,7 @@
     </script>
   </body>
 </html>
+
 
 
 
